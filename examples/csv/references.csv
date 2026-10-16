@@ -1,1 +1,1 @@
-schema_version,build_id,analysis_id,source_id,target_id,reference_kind,raw_location,resolution_status,evidence_id
+schema_version,build_id,component_revision_id,analysis_id,source_id,target_id,reference_kind,raw_location,resolution_status,evidence_id

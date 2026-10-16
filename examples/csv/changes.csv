@@ -1,1 +1,1 @@
-schema_version,from_build_id,to_build_id,symbol_id,old_observation_id,new_observation_id,change_flag,match_method,match_status,evidence_id
+schema_version,from_build_id,to_build_id,from_component_revision_id,to_component_revision_id,symbol_id,old_observation_id,new_observation_id,change_flag,match_method,match_status,evidence_id

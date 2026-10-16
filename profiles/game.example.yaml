@@ -1,8 +1,40 @@
-# This profile is an implementation example, not a detected game configuration.
-schema_version: 1
+# Generic safe-by-default profile. A filename is only a discovery hint; it does
+# not prove ownership and cannot by itself authorize decompilation.
+schema_version: 2
+workflow:
+  default_command: update
+  mode: complete_incremental
+  preflight:
+    enabled: true
+    quick_checks_every_run:
+      - configuration
+      - required_mounts
+      - permissions
+      - free_space
+      - input_snapshot_boundary
+    cached_doctor_checks:
+      enabled: true
+      cache_key_inputs:
+        - image_digests
+        - tools_lock_digest
+        - profile_digest
+      checks:
+        - tool_presence
+        - pinned_version_match
+        - adapter_load
+    full_doctor_command: explicit_force_refresh
+  planning:
+    capture_plan: enabled
+    analysis_plan: enabled
+    reuse_plan_in_same_run: true
+    dry_run_behavior: stop_after_plan_before_write
+  execute_only_invalidated_work: true
+
 game:
   id: target-game
-  input_root: /input/game
+  live_source_root: /source/game
+  snapshot_root: /inputs
+  distribution_manifest: null
   backend: auto
   platform: auto
   architecture: auto
@@ -11,40 +43,28 @@ game:
 capture:
   require_completed_installation: true
   immutable_snapshot: true
+  object_root: /inputs/objects/sha256
+  snapshot_root: /inputs/snapshots
+  current_pointer: /inputs/current.json
   hash_algorithm: sha256
   trust_mtime_cache: false
   reject_inputs_changed_during_capture: true
+  stable_read_passes: 1
+  pre_and_post_read_stat: true
+  changed_during_read: retry_once_then_fail
+  decompress_during_capture: false
+  follow_symlinks: false
+  preserve_absolute_host_paths: false
 
-inventory:
-  include: ["**/*"]
-  exclude:
-    - "**/Logs/**"
-    - "**/logs/**"
-    - "**/Saves/**"
-    - "**/saves/**"
-    - "**/BepInEx/cache/**"
-    - "**/BepInEx/interop/**"
-    - "**/BepInEx/plugins/**"
-    - "**/BepInEx/LogOutput.log"
-
-scope:
-  mode: game_code_only
-  unknown_ownership: needs_review
-  classifications:
-    game_decompile: ["Assembly-CSharp", "Assembly-CSharp-firstpass"]
-    reference_only: ["UnityEngine.*", "Unity.*", "System.*", "mscorlib", "netstandard"]
-    excluded: ["UnityPlayer.dll", "UnityCrashHandler*.exe"]
-  game_assembly_allowlist: []
-  native_game_module_allowlist: []
-  external_signatures: referenced_only
-  external_implementations: false
-  il2cpp_module_policy: mixed_select_by_original_managed_assembly
-  review_unknown_bodies: true
-  permit_explicit_exceptions: true
+manifests:
+  input_selection: /config/input-selection.yaml
+  decompilation_policy: /config/decompilation.yaml
 
 analysis:
-  metadata_scope: all_game_metadata
-  native_decompile_scope: game_and_integration
+  ghidra: enabled
+  ghidra_discovery_scope: relevant_native_modules
+  metadata_scope: all_relevant_metadata
+  native_decompile_scope: approved_game_and_integration
   include_engine_implementations: false
   include_third_party_implementations: false
   native_export_granularity: body
@@ -53,10 +73,13 @@ analysis:
   module_workers: 1
   preserve_raw_evidence: true
   fuzzy_matching: review_only
-  bsim: optional
+  bsim: enabled
+  bsim_scope: approved_game_and_integration_bodies
+  execute_enabled_stages_only_when_invalidated: true
+  reuse_complete_cache_hits: true
 
 lua:
-  enabled: true
+  enabled: auto
   dialect: auto
   bridge: auto
   parse_sources: true
@@ -70,18 +93,46 @@ outputs:
   root: /output
   csv: true
   normalized_json: true
-  pseudocode: true
-  assembly_listing: true
+  pseudocode: approved_game_bodies
+  assembly_listing: approved_game_bodies
   lua_definitions: true
   documentation: true
   overwrite_only_if_content_changed: true
+  include_absolute_host_paths: false
 
 state:
   root: /state
+  artifact_root: /artifacts
+  ghidra_root: /ghidra-state
+  cache_root: /cache
+  work_root: /work
   single_writer: true
   atomic_publication: true
 
+reporting:
+  enabled: true
+  capture_fragment_root: /inputs/run-reports
+  final_report_root: /output/reports
+  formats: [json, markdown, csv]
+  timing:
+    enabled: true
+    granularity: stage_and_substep
+    duration_clock: monotonic
+    record_cache_status: true
+    record_skipped_steps: true
+    record_item_and_byte_counts: true
+    record_cpu_time_when_available: true
+    record_peak_rss_when_available: true
+  publish_latest_pointer: true
+  atomic_publication: true
+
+compatibility:
+  approval_basis: exact_capability_dependencies
+  unchanged_dependency_transfer: explicit_policy_only
+  unknown_dependency: disable_affected_capability
+
 runtime_policy:
-  unknown_build: disable_affected_capabilities
-  ambiguous_resolution: disable_affected_capabilities
+  unknown_build: evaluate_each_capability
+  ambiguous_resolution: disable_affected_capability
   automatic_hook_approval: false
+  external_authorization_required_for_distribution: true

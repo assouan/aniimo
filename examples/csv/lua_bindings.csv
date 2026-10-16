@@ -1,1 +1,1 @@
-schema_version,build_id,analysis_id,lua_symbol_id,lua_path,managed_symbol_id,native_body_id,bridge,binding_role,mapping_status,evidence_id
+schema_version,build_id,component_revision_id,analysis_id,lua_symbol_id,lua_path,managed_symbol_id,native_body_id,bridge,binding_role,mapping_status,evidence_id

@@ -1,1 +1,1 @@
-schema_version,build_id,analysis_id,lua_symbol_id,lua_path,kind,signature,name_source,signature_source,availability_context,observation_status,evidence_id
+schema_version,build_id,component_revision_id,analysis_id,lua_symbol_id,lua_path,kind,signature,name_source,signature_source,availability_context,ownership_status,scope_classification,observation_status,evidence_id

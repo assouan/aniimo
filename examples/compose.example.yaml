@@ -1,12 +1,67 @@
-# Contract example: implement the Dockerfile and modkit CLI before using it.
-# Copy this file to the repository root, then adjust paths and limits.
+# Contract example: implement both Dockerfiles and the modkit CLI before use.
+# Copy this file to the repository root, or pass `--project-directory .` when
+# validating it in place. Copy .env.example to .env before an implemented run.
 services:
-  analyzer:
+  capture:
     build:
       context: .
-      dockerfile: docker/Dockerfile
+      dockerfile: docker/capture.Dockerfile
+      args:
+        MODKIT_UID: "${LOCAL_UID:-1000}"
+        MODKIT_GID: "${LOCAL_GID:-1000}"
     entrypoint: ["modkit"]
-    command: ["update", "--config", "/config/game.yaml"]
+    command: ["capture", "--config", "/config/aniimo.yaml"]
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    read_only: true
+    network_mode: none
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      HOME: /tmp/home
+      PYTHONDONTWRITEBYTECODE: "1"
+      TMPDIR: /tmp
+      MODKIT_CONFIG: /config/aniimo.yaml
+      MODKIT_INPUT_SELECTION: /config/aniimo.inputs.yaml
+    volumes:
+      # Only this service can see the mutable live installation.
+      - type: bind
+        source: "${GAME_DIR:?Set GAME_DIR to a complete game installation}"
+        target: /source/game
+        read_only: true
+      - type: bind
+        source: "${STEAM_APP_MANIFEST:?Set STEAM_APP_MANIFEST to appmanifest_4126040.acf}"
+        target: /source/steam/appmanifest.acf
+        read_only: true
+      - type: bind
+        source: ./profiles/aniimo.yaml
+        target: /config/aniimo.yaml
+        read_only: true
+      - type: bind
+        source: ./profiles/aniimo.inputs.yaml
+        target: /config/aniimo.inputs.yaml
+        read_only: true
+      - type: volume
+        source: modkit-inputs
+        target: /inputs
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=512m
+    cpus: "${CAPTURE_CPUS:-4}"
+    mem_limit: "${CAPTURE_MEMORY_LIMIT:-4g}"
+    pids_limit: 256
+    init: true
+
+  analyzer:
+    depends_on:
+      capture:
+        condition: service_completed_successfully
+    build:
+      context: .
+      dockerfile: docker/analyzer.Dockerfile
+      args:
+        MODKIT_UID: "${LOCAL_UID:-1000}"
+        MODKIT_GID: "${LOCAL_GID:-1000}"
+    entrypoint: ["modkit"]
+    command: ["analyze", "--config", "/config/aniimo.yaml", "--snapshot", "current"]
     user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
     read_only: true
     network_mode: none
@@ -14,29 +69,68 @@ services:
     security_opt: ["no-new-privileges:true"]
     environment:
       HOME: /state/home
-      XDG_CACHE_HOME: /state/cache
+      XDG_CACHE_HOME: /cache/xdg
       DOTNET_CLI_HOME: /state/dotnet
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
-      PYTHONPYCACHEPREFIX: /state/pycache
-      MODKIT_CONFIG: /config/game.yaml
+      PYTHONPYCACHEPREFIX: /cache/pycache
+      TMPDIR: /work/tmp/analyzer
+      MODKIT_GHIDRA_MAX_HEAP: "${GHIDRA_MAX_HEAP:-24G}"
+      MODKIT_CONFIG: /config/aniimo.yaml
+      MODKIT_INPUT_SELECTION: /config/aniimo.inputs.yaml
+      MODKIT_DECOMPILATION_POLICY: /config/aniimo.decompilation.yaml
     volumes:
       - type: bind
-        source: "${GAME_DIR:?Set GAME_DIR to a complete game installation}"
-        target: /input/game
+        source: ./profiles/aniimo.yaml
+        target: /config/aniimo.yaml
         read_only: true
       - type: bind
-        source: ./profiles/game.yaml
-        target: /config/game.yaml
+        source: ./profiles/aniimo.decompilation.yaml
+        target: /config/aniimo.decompilation.yaml
         read_only: true
       - type: bind
-        source: ./state
+        source: ./profiles/aniimo.inputs.yaml
+        target: /config/aniimo.inputs.yaml
+        read_only: true
+      # The analyzer cannot see Steam and cannot mutate captured inputs.
+      - type: volume
+        source: modkit-inputs
+        target: /inputs
+        read_only: true
+      - type: volume
+        source: modkit-state
         target: /state
+      - type: volume
+        source: modkit-artifacts
+        target: /artifacts
+      - type: volume
+        source: modkit-ghidra
+        target: /ghidra-state
+      - type: volume
+        source: modkit-cache
+        target: /cache
+      - type: volume
+        source: modkit-work
+        target: /work
       - type: bind
         source: ./output
         target: /output
     tmpfs:
-      - /tmp:rw,nosuid,size=1g
-    cpus: 4
-    mem_limit: 8g
-    pids_limit: 512
+      - /tmp:rw,nosuid,nodev,size=2g
+    cpus: "${ANALYZER_CPUS:-12}"
+    mem_limit: "${ANALYZER_MEMORY_LIMIT:-32g}"
+    pids_limit: 1024
     init: true
+
+volumes:
+  modkit-inputs:
+    name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}inputs"
+  modkit-state:
+    name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}state"
+  modkit-artifacts:
+    name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}artifacts"
+  modkit-ghidra:
+    name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}ghidra"
+  modkit-cache:
+    name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}cache"
+  modkit-work:
+    name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}work"

@@ -1,1 +1,1 @@
-schema_version,build_id,analysis_id,symbol_id,assembly,declaring_type,name,signature_key,return_type,name_source,name_status,analysis_status,evidence_id
+schema_version,build_id,component_revision_id,analysis_id,symbol_id,assembly,declaring_type,name,signature_key,return_type,name_source,name_status,ownership_status,scope_classification,scope_decision_id,analysis_status,evidence_id

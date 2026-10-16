@@ -1,0 +1,81 @@
+# Aniimo decompilation policy.
+#
+# Capture availability is not decompilation approval. M0 must replace hints
+# with evidence-backed component decisions in scope-plan.json. The exact NEP
+# entries below are explicit full-module exceptions authorized by the project
+# owner; unknown components still fail closed.
+schema_version: 1
+policy_id: aniimo-authorized-analysis-v2
+input_selection_id: aniimo-static-inputs-v4
+
+defaults:
+  unknown_ownership: needs_review
+  unknown_native_body: needs_review
+  filename_is_evidence_only: true
+  export_implementation: false
+
+approved:
+  game_decompile:
+    - NEP2.dll
+    - NEPKernel.sys
+    - NEPCleaner.exe
+    - KernelDumpAnalyzer.exe
+  full_module_decompile:
+    - NEP2.dll
+    - NEPKernel.sys
+    - NEPCleaner.exe
+    - KernelDumpAnalyzer.exe
+  reference_only: []
+  excluded: []
+  symbol_exceptions: []
+
+classification_hints:
+  candidate_game_managed_assemblies:
+    - FunPlus.WorldX.Scripts.dll
+  candidate_game_native_modules:
+    - Aniimo.exe
+    - Aniimo_Data/Plugins/x86_64/lib_burst_generated.dll
+  candidate_game_integration_modules:
+    - Aniimo_Data/Plugins/x86_64/FPXGame.dll
+  likely_reference_only_names:
+    - "UnityEngine.*"
+    - "Unity.*"
+    - "System.*"
+    - mscorlib
+    - netstandard
+    - UnityPlayer.dll
+    - Aniimo_Data/Plugins/x86_64/xlua.dll
+    - Aniimo_Data/Plugins/x86_64/FPX.dll
+    - Aniimo_Data/Plugins/x86_64/FPXSteam.dll
+    - Aniimo_Data/Plugins/x86_64/CrashSight64.dll
+    - Aniimo_Data/Plugins/x86_64/GMESDK.dll
+    - Aniimo_Data/Plugins/x86_64/discord_partner_sdk.dll
+    - Aniimo_Data/Plugins/x86_64/discord_krisp.dll
+  likely_excluded_names:
+    - "UnityCrashHandler*.exe"
+
+policy_excluded_implementation_categories:
+  - unity_engine
+  - dotnet_runtime
+  - mono_runtime
+  - il2cpp_runtime
+  - generic_lua_runtime
+  - operating_system
+  - third_party_generic
+
+requirements:
+  decision_values: [game_decompile, reference_only, excluded, needs_review]
+  require_evidence_for_game_decompile: true
+  require_original_managed_owner_for_il2cpp_body: true
+  allow_module_wide_discovery: true
+  allow_module_wide_decompilation: explicit_approved_modules_only
+  explicit_module_approval_is_scope_evidence: true
+  explicit_module_approval_overrides_category_hints: true
+  explicit_symbol_exceptions_only: true
+  shared_native_bodies_record_all_owners: true
+
+exports:
+  external_signatures: referenced_only
+  external_implementations: explicit_approved_modules_only
+  pseudocode: approved_target_bodies
+  assembly_listing: approved_target_bodies

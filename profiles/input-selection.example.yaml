@@ -1,0 +1,61 @@
+# Generic bounded capture allowlist. Copy this file and add only inputs needed
+# for detection, references, or approved analysis. Never default to `**/*`.
+schema_version: 2
+selection_id: target-game-static-inputs-v2
+
+source:
+  game_root: /source/game
+  distribution_manifest: null
+
+destination:
+  root: /inputs
+  object_root: /inputs/objects/sha256
+  snapshot_root: /inputs/snapshots
+  current_pointer: /inputs/current.json
+
+feature_sets:
+  default_enabled: [core]
+  available:
+    core:
+      description: Minimal detection and analysis inputs.
+
+policy:
+  default_action: ignore
+  paths_are_relative_to_game_root: true
+  reject_absolute_paths: true
+  reject_parent_traversal: true
+  follow_symlinks: false
+  case_collision: fail
+  stable_read_passes: 1
+  hash_algorithm: sha256
+  mtime_is_identity: false
+  trust_mtime_cache: false
+  pre_and_post_read_stat: true
+  changed_during_read: retry_once_then_fail
+  hash_unchanged_candidates_without_staging: true
+  stream_hash_while_staging_new_objects: true
+  unchanged_object_action: reuse_without_copy
+  decompress_during_capture: false
+  debug_symbol_use_requires_binary_match: true
+  missing_required: fail_capture
+  missing_optional: record_absent
+  inventory_with_storage_action: merge_metadata
+  inventory_signer_mode: embedded_certificate_metadata_only
+  require_unique_rule_ids: true
+  payload_identity_default: build_content
+  external_payload_identity_default: evidence_only
+
+payload_rules: []
+external_payload_rules: []
+inventory_rules: []
+coherence_groups: []
+
+always_excluded_paths:
+  - "**/Logs/**"
+  - "**/logs/**"
+  - "**/Saves/**"
+  - "**/saves/**"
+  - "**/Screenshots/**"
+  - "**/BepInEx/cache/**"
+  - "**/BepInEx/interop/**"
+  - "**/BepInEx/plugins/**"

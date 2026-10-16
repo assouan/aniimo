@@ -1,0 +1,45 @@
+# Generic fail-closed decompilation policy.
+schema_version: 1
+policy_id: target-game-only-v1
+input_selection_id: target-game-static-inputs-v1
+
+defaults:
+  unknown_ownership: needs_review
+  unknown_native_body: needs_review
+  filename_is_evidence_only: true
+  export_implementation: false
+
+approved:
+  game_decompile: []
+  reference_only: []
+  excluded: []
+  symbol_exceptions: []
+
+classification_hints:
+  likely_game_assembly_names: [Assembly-CSharp, Assembly-CSharp-firstpass]
+  likely_reference_only_names: ["UnityEngine.*", "Unity.*", "System.*", mscorlib, netstandard]
+  likely_excluded_names: [UnityPlayer.dll, "UnityCrashHandler*.exe"]
+
+policy_excluded_implementation_categories:
+  - unity_engine
+  - dotnet_runtime
+  - mono_runtime
+  - il2cpp_runtime
+  - generic_lua_runtime
+  - operating_system
+  - third_party_generic
+  - anti_cheat
+
+requirements:
+  decision_values: [game_decompile, reference_only, excluded, needs_review]
+  require_evidence_for_game_decompile: true
+  require_original_managed_owner_for_il2cpp_body: true
+  allow_module_wide_discovery: true
+  allow_module_wide_decompilation: false
+  explicit_symbol_exceptions_only: true
+
+exports:
+  external_signatures: referenced_only
+  external_implementations: false
+  pseudocode: approved_game_bodies
+  assembly_listing: approved_game_bodies

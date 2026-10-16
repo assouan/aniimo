@@ -1,0 +1,312 @@
+# Aniimo live-installation capture allowlist.
+#
+# Only payload_rules are copied into the immutable input volume. Inventory
+# rules record bounded metadata so a newly discovered module can be reviewed
+# and explicitly added later without copying the complete game installation.
+schema_version: 2
+selection_id: aniimo-static-inputs-v4
+
+source:
+  game_root: /source/game
+  steam_manifest: /source/steam/appmanifest.acf
+
+destination:
+  root: /inputs
+  object_root: /inputs/objects/sha256
+  snapshot_root: /inputs/snapshots
+  current_pointer: /inputs/current.json
+  manifest_name: capture-manifest.json
+
+feature_sets:
+  default_enabled: [core, lua, content_indexes, anti_cheat]
+  available:
+    core:
+      description: Minimal backend detection and game-code analysis inputs.
+    lua:
+      description: Active and bundled Lua archives.
+    content_indexes:
+      description: Content manifests used to explain non-code changes.
+    anti_cheat:
+      description: Authorized anti-cheat binaries for complete static analysis.
+
+policy:
+  default_action: ignore
+  paths_are_relative_to_game_root: true
+  reject_absolute_paths: true
+  reject_parent_traversal: true
+  follow_symlinks: false
+  case_collision: fail
+  stable_read_passes: 1
+  hash_algorithm: sha256
+  mtime_is_identity: false
+  trust_mtime_cache: false
+  pre_and_post_read_stat: true
+  changed_during_read: retry_once_then_fail
+  hash_unchanged_candidates_without_staging: true
+  stream_hash_while_staging_new_objects: true
+  unchanged_object_action: reuse_without_copy
+  decompress_during_capture: false
+  debug_symbol_use_requires_binary_match: true
+  missing_required: fail_capture
+  missing_optional: record_absent
+  unmatched_glob: record_absent
+  payload_rule_precedence: exact_before_glob
+  inventory_with_storage_action: merge_metadata
+  inventory_signer_mode: embedded_certificate_metadata_only
+  require_unique_rule_ids: true
+  payload_identity_default: build_content
+  external_payload_identity_default: evidence_only
+
+payload_rules:
+  # Minimal Unity/build detection.
+  - id: aniimo-executable
+    feature: core
+    selector: {type: exact, path: Aniimo.exe}
+    required: true
+    roles: [launcher, pe_identity, native_candidate]
+  - id: unity-globalgamemanagers
+    feature: core
+    selector: {type: exact, path: Aniimo_Data/globalgamemanagers}
+    required: true
+    roles: [unity_version_evidence]
+  - id: unity-boot-config
+    feature: core
+    selector: {type: exact, path: Aniimo_Data/boot.config}
+    required: false
+    roles: [runtime_configuration]
+  - id: unity-scripting-assemblies
+    feature: core
+    selector: {type: exact, path: Aniimo_Data/ScriptingAssemblies.json}
+    required: false
+    roles: [managed_inventory_evidence]
+
+  # Backend alternatives. The capture may contain IL2CPP, Mono, or both sets;
+  # detection decides which one is authoritative.
+  - id: il2cpp-game-assembly
+    feature: core
+    selector: {type: exact, path: GameAssembly.dll}
+    required: false
+    roles: [il2cpp_mixed_container, native_analysis_candidate]
+  - id: il2cpp-global-metadata
+    feature: core
+    selector: {type: exact, path: Aniimo_Data/il2cpp_data/Metadata/global-metadata.dat}
+    required: false
+    roles: [il2cpp_metadata]
+  - id: mono-managed-assemblies
+    feature: core
+    selector: {type: glob, path: "Aniimo_Data/Managed/*.dll", max_matches: 1024}
+    required: false
+    roles: [managed_assembly_candidate, managed_reference]
+  - id: mono-runtime-config
+    feature: core
+    selector: {type: exact, path: Aniimo_Data/MonoBleedingEdge/etc/mono/config}
+    required: false
+    roles: [mono_runtime_evidence]
+
+  # Matching debug symbols take precedence over native decompilation. They are
+  # rare in retail builds and cheaper to consume than reconstructing symbols.
+  - id: aniimo-debug-symbol
+    feature: core
+    selector: {type: exact, path: Aniimo.pdb}
+    required: false
+    roles: [debug_symbols]
+  - id: game-assembly-debug-symbol
+    feature: core
+    selector: {type: exact, path: GameAssembly.pdb}
+    required: false
+    roles: [debug_symbols]
+  - id: fpx-game-debug-symbol
+    feature: core
+    selector: {type: exact, path: Aniimo_Data/Plugins/x86_64/FPXGame.pdb}
+    required: false
+    roles: [debug_symbols]
+  - id: burst-debug-symbol
+    feature: core
+    selector: {type: exact, path: Aniimo_Data/Plugins/x86_64/lib_burst_generated.pdb}
+    required: false
+    roles: [debug_symbols]
+
+  # Selected native modules. These are capture candidates, not automatic
+  # game-ownership or decompilation approvals.
+  - id: fpx-game-integration
+    feature: core
+    selector: {type: exact, path: Aniimo_Data/Plugins/x86_64/FPXGame.dll}
+    required: false
+    roles: [game_integration_candidate]
+  - id: burst-generated-code
+    feature: core
+    selector: {type: exact, path: Aniimo_Data/Plugins/x86_64/lib_burst_generated.dll}
+    required: false
+    roles: [generated_game_code_candidate]
+  - id: xlua-bridge-reference
+    feature: core
+    selector: {type: exact, path: Aniimo_Data/Plugins/x86_64/xlua.dll}
+    required: false
+    roles: [lua_bridge_reference]
+
+  # Anti-cheat components are explicit authorized analysis targets. Capture
+  # their complete bodies so the analyzer can decompile and document them.
+  - id: nep-user-module
+    feature: anti_cheat
+    selector: {type: exact, path: NEP2.dll}
+    required: false
+    roles: [anti_cheat_module, native_analysis_target]
+  - id: nep-kernel-module
+    feature: anti_cheat
+    selector: {type: exact, path: NEPKernel.sys}
+    required: false
+    roles: [anti_cheat_kernel_module, native_analysis_target]
+  - id: nep-cleaner-tool
+    feature: anti_cheat
+    selector: {type: exact, path: NEPCleaner.exe}
+    required: false
+    roles: [anti_cheat_tool, native_analysis_target]
+  - id: nep-dump-analyzer-tool
+    feature: anti_cheat
+    selector: {type: exact, path: KernelDumpAnalyzer.exe}
+    required: false
+    roles: [anti_cheat_tool, native_analysis_target]
+  - id: nep-debug-symbols
+    feature: anti_cheat
+    selector: {type: glob, path: "NEP*.pdb", max_matches: 64}
+    required: false
+    roles: [anti_cheat_debug_symbols]
+  - id: nep-dump-analyzer-debug-symbol
+    feature: anti_cheat
+    selector: {type: exact, path: KernelDumpAnalyzer.pdb}
+    required: false
+    roles: [anti_cheat_debug_symbols]
+
+  # Lua bodies are enabled in the complete Aniimo default capture.
+  - id: active-lua-xdf
+    feature: lua
+    selector: {type: exact, path: Aniimo_Data/cvs/res/lua/LuaScripts.xdf}
+    required: false
+    roles: [active_lua_archive]
+  - id: active-lua-xdt
+    feature: lua
+    selector: {type: exact, path: Aniimo_Data/cvs/res/lua/LuaScripts.xdt}
+    required: false
+    roles: [active_lua_archive]
+  - id: active-lua-version
+    feature: lua
+    selector: {type: exact, path: Aniimo_Data/cvs/res/lua/LuaCacheVer.txt}
+    required: false
+    roles: [active_lua_version]
+  - id: bundled-lua-xdf
+    feature: lua
+    selector: {type: exact, path: Aniimo_Data/StreamingAssets/cvs/res/lua/LuaScripts.xdf}
+    required: false
+    roles: [bundled_lua_archive]
+  - id: bundled-lua-xdt
+    feature: lua
+    selector: {type: exact, path: Aniimo_Data/StreamingAssets/cvs/res/lua/LuaScripts.xdt}
+    required: false
+    roles: [bundled_lua_archive]
+
+  # Content indexes are enabled by default and never cause general asset copying.
+  - id: package-manifests
+    feature: content_indexes
+    selector: {type: glob, path: "Aniimo_Data/**/PackageManifest_*", max_matches: 4096}
+    required: false
+    roles: [content_manifest]
+  - id: root-md5-list
+    feature: content_indexes
+    selector: {type: exact, path: md5list.txt}
+    required: false
+    roles: [content_manifest]
+  - id: root-version-list
+    feature: content_indexes
+    selector: {type: exact, path: verlist.txt}
+    required: false
+    roles: [content_manifest]
+
+# External evidence uses an explicit logical path and is copied into the same
+# snapshot without exposing its absolute host path.
+external_payload_rules:
+  - id: steam-app-manifest
+    feature: core
+    source: steam_manifest
+    logical_path: distribution/steam/appmanifest.acf
+    required: true
+    identity_contribution: evidence_only
+    roles: [distribution_manifest, external_build_reference]
+
+# These rules never retain or fully hash file bodies. PE identity and signer
+# certificate metadata are read only when applicable.
+inventory_rules:
+  - id: unity-player-metadata
+    selector: {type: exact, path: UnityPlayer.dll}
+    roles: [unity_reference, pe_load_context]
+    record: [logical_path, size_bytes, mtime_ns, pe_machine, pe_timestamp, signer_fingerprint]
+  - id: fpx-sdk-metadata
+    selector: {type: exact, path: Aniimo_Data/Plugins/x86_64/FPX.dll}
+    roles: [publisher_sdk_reference]
+    record: [logical_path, size_bytes, mtime_ns, pe_machine, pe_timestamp, signer_fingerprint]
+  - id: fpx-steam-metadata
+    selector: {type: exact, path: Aniimo_Data/Plugins/x86_64/FPXSteam.dll}
+    roles: [publisher_sdk_reference]
+    record: [logical_path, size_bytes, mtime_ns, pe_machine, pe_timestamp, signer_fingerprint]
+  - id: repair-tool-metadata
+    selector: {type: exact, path: repair.exe}
+    roles: [installer_or_repair_excluded]
+    record: [logical_path, size_bytes, mtime_ns, pe_machine, pe_timestamp, signer_fingerprint]
+  - id: doorstop-config-metadata
+    selector: {type: exact, path: doorstop_config.ini}
+    roles: [existing_loader_evidence]
+    record: [logical_path, size_bytes, mtime_ns]
+  - id: doorstop-version-metadata
+    selector: {type: exact, path: .doorstop_version}
+    roles: [existing_loader_evidence]
+    record: [logical_path, size_bytes, mtime_ns]
+  - id: proxy-loader-metadata
+    selector: {type: exact, path: winhttp.dll}
+    roles: [possible_proxy_loader_evidence]
+    record: [logical_path, size_bytes, mtime_ns, pe_machine, pe_timestamp, signer_fingerprint]
+  - id: root-dll-inventory
+    selector: {type: glob, path: "*.dll", max_matches: 256}
+    record: [logical_path, size_bytes, mtime_ns, pe_machine, pe_timestamp, signer_fingerprint]
+  - id: root-executable-inventory
+    selector: {type: glob, path: "*.exe", max_matches: 256}
+    record: [logical_path, size_bytes, mtime_ns, pe_machine, pe_timestamp, signer_fingerprint]
+  - id: native-plugin-inventory
+    selector: {type: glob, path: "Aniimo_Data/Plugins/x86_64/*.dll", max_matches: 2048}
+    record: [logical_path, size_bytes, mtime_ns, pe_machine, pe_timestamp, signer_fingerprint]
+  - id: root-pdb-inventory
+    selector: {type: glob, path: "*.pdb", max_matches: 128}
+    record: [logical_path, size_bytes, mtime_ns]
+  - id: plugin-pdb-inventory
+    selector: {type: glob, path: "Aniimo_Data/Plugins/x86_64/*.pdb", max_matches: 512}
+    record: [logical_path, size_bytes, mtime_ns]
+
+coherence_groups:
+  - id: il2cpp_pair
+    feature: core
+    members:
+      - GameAssembly.dll
+      - Aniimo_Data/il2cpp_data/Metadata/global-metadata.dat
+    rule: all_or_none
+  - id: active_lua_pair
+    feature: lua
+    members:
+      - Aniimo_Data/cvs/res/lua/LuaScripts.xdf
+      - Aniimo_Data/cvs/res/lua/LuaScripts.xdt
+    rule: all_or_none
+  - id: bundled_lua_pair
+    feature: lua
+    members:
+      - Aniimo_Data/StreamingAssets/cvs/res/lua/LuaScripts.xdf
+      - Aniimo_Data/StreamingAssets/cvs/res/lua/LuaScripts.xdt
+    rule: all_or_none
+
+always_excluded_paths:
+  - "**/Logs/**"
+  - "**/logs/**"
+  - "**/Saves/**"
+  - "**/saves/**"
+  - "**/Screenshots/**"
+  - "**/Photos/**"
+  - "**/BepInEx/cache/**"
+  - "**/BepInEx/interop/**"
+  - "**/BepInEx/plugins/**"
+  - "**/BepInEx/LogOutput.log"

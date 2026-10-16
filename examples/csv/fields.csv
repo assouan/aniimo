@@ -1,1 +1,1 @@
-schema_version,build_id,analysis_id,symbol_id,declaring_type_id,name,field_type_id,is_static,offset_kind,offset_bytes,name_source,evidence_id
+schema_version,build_id,component_revision_id,analysis_id,symbol_id,declaring_type_id,name,field_type_id,is_static,offset_kind,offset_bytes,name_source,evidence_id

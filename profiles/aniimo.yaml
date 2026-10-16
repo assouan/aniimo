@@ -1,0 +1,170 @@
+# Aniimo analysis profile.
+#
+# Values under `historical_evidence` are discovery hints from the local sample
+# build 25962016. They are not current detection results and never authorize
+# decompilation on their own. M0 must independently verify every current input.
+schema_version: 2
+workflow:
+  default_command: update
+  mode: complete_incremental
+  preflight:
+    enabled: true
+    quick_checks_every_run:
+      - configuration
+      - required_mounts
+      - permissions
+      - free_space
+      - input_snapshot_boundary
+    cached_doctor_checks:
+      enabled: true
+      cache_key_inputs:
+        - image_digests
+        - tools_lock_digest
+        - profile_digest
+      checks:
+        - tool_presence
+        - pinned_version_match
+        - adapter_load
+    full_doctor_command: explicit_force_refresh
+  planning:
+    capture_plan: enabled
+    analysis_plan: enabled
+    reuse_plan_in_same_run: true
+    dry_run_behavior: stop_after_plan_before_write
+  execute_only_invalidated_work: true
+
+game:
+  id: aniimo
+  title: Aniimo
+  live_source_root: /source/game
+  snapshot_root: /inputs
+  distribution: steam
+  distribution_manifest: /source/steam/appmanifest.acf
+  steam_app_id_hint: "4126040"
+  backend: auto
+  platform: auto
+  architecture: auto
+  unity_version: auto
+
+historical_evidence:
+  status: unverified_for_current_installation
+  observed_at: "2026-10-16"
+  steam_build_id: "25962016"
+  backend: il2cpp
+  platform: windows
+  architecture: x86_64
+  unity_version: "2022.3.62f1"
+  lua_bridge: xlua
+  primary_managed_assembly_hint: FunPlus.WorldX.Scripts.dll
+  metadata_header_hex: AF1BB1FA
+  source_document: docs/aniimo/HISTORICAL_EVIDENCE.md
+
+capture:
+  require_completed_installation: true
+  immutable_snapshot: true
+  object_root: /inputs/objects/sha256
+  snapshot_root: /inputs/snapshots
+  current_pointer: /inputs/current.json
+  hash_algorithm: sha256
+  trust_mtime_cache: false
+  reject_inputs_changed_during_capture: true
+  stable_read_passes: 1
+  pre_and_post_read_stat: true
+  changed_during_read: retry_once_then_fail
+  decompress_during_capture: false
+  verify_steam_state: true
+  follow_symlinks: false
+  preserve_absolute_host_paths: false
+
+manifests:
+  input_selection: /config/aniimo.inputs.yaml
+  decompilation_policy: /config/aniimo.decompilation.yaml
+
+analysis:
+  ghidra: enabled
+  ghidra_discovery_scope: relevant_native_modules
+  metadata_scope: all_relevant_metadata
+  native_decompile_scope: approved_game_integration_and_anti_cheat
+  include_engine_implementations: false
+  include_third_party_implementations: false
+  native_export_granularity: body
+  managed_export_granularity: type
+  per_function_timeout_seconds: 120
+  module_workers: 1
+  preserve_raw_evidence: true
+  fuzzy_matching: review_only
+  bsim: enabled
+  bsim_scope: approved_game_integration_and_anti_cheat_bodies
+  execute_enabled_stages_only_when_invalidated: true
+  reuse_complete_cache_hits: true
+  protected_metadata: detect_and_fail_closed_until_adapter_validated
+  pe_reuse_basis: validated_load_image_context
+
+lua:
+  enabled: true
+  capture_feature: lua
+  dialect: auto
+  bridge: auto
+  bridge_hint: xlua
+  active_archive_pair:
+    - Aniimo_Data/cvs/res/lua/LuaScripts.xdf
+    - Aniimo_Data/cvs/res/lua/LuaScripts.xdt
+  bundled_archive_pair:
+    - Aniimo_Data/StreamingAssets/cvs/res/lua/LuaScripts.xdf
+    - Aniimo_Data/StreamingAssets/cvs/res/lua/LuaScripts.xdt
+  parse_sources: true
+  inspect_bindings: true
+  execute_extracted_code: false
+  runtime_probe: separate_authorized_process
+  require_matching_build_for_observations: true
+  infer_absence_as_removal: false
+
+outputs:
+  root: /output
+  csv: true
+  normalized_json: true
+  pseudocode: approved_target_bodies
+  assembly_listing: approved_target_bodies
+  lua_definitions: true
+  documentation: true
+  overwrite_only_if_content_changed: true
+  include_absolute_host_paths: false
+
+state:
+  root: /state
+  artifact_root: /artifacts
+  ghidra_root: /ghidra-state
+  cache_root: /cache
+  work_root: /work
+  single_writer: true
+  atomic_publication: true
+
+reporting:
+  enabled: true
+  capture_fragment_root: /inputs/run-reports
+  final_report_root: /output/reports
+  formats: [json, markdown, csv]
+  timing:
+    enabled: true
+    granularity: stage_and_substep
+    duration_clock: monotonic
+    record_cache_status: true
+    record_skipped_steps: true
+    record_item_and_byte_counts: true
+    record_cpu_time_when_available: true
+    record_peak_rss_when_available: true
+  publish_latest_pointer: true
+  atomic_publication: true
+
+compatibility:
+  approval_basis: exact_capability_dependencies
+  unchanged_dependency_transfer: explicit_policy_only
+  unknown_dependency: disable_affected_capability
+
+runtime_policy:
+  target_process: Aniimo.exe
+  deployment_environment: authorized_windows_process_only
+  unknown_build: evaluate_each_capability
+  ambiguous_resolution: disable_affected_capability
+  automatic_hook_approval: false
+  external_authorization_required_for_distribution: true

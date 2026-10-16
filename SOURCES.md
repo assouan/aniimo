@@ -109,3 +109,24 @@ Les identifiants [Sxx] du dossier renvoient aux entrées suivantes. Les exigence
 ## S26 — LuaJIT : extensions et compatibilité
 
 `https://luajit.org/extensions.html`
+
+## S27 — BepInEx : installation Unity IL2CPP
+
+`https://github.com/BepInEx/bepinex-docs/blob/master/articles/user_guide/installation/unity_il2cpp.md`
+
+La documentation qualifie les builds IL2CPP concernés de Bleeding Edge ; une version exacte doit donc être testée et verrouillée pour Aniimo.
+
+## S28 — Docker Desktop : partages et stockage
+
+`https://docs.docker.com/desktop/settings-and-maintenance/settings/#file-sharing`
+`https://docs.docker.com/engine/storage/bind-mounts/`
+`https://docs.docker.com/engine/storage/volumes/`
+
+## S29 — Ark Server API : nature serveur du projet de référence
+
+`https://www.ark-server-api.com/resources/ase-server-api.32/`
+`https://github.com/ArkServerApi/AseApi`
+
+## S30 — Ghidra : prérequis de la distribution courante
+
+`https://github.com/NationalSecurityAgency/ghidra/blob/master/GhidraDocs/GettingStarted.md`

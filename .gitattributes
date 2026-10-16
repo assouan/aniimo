@@ -1,0 +1,28 @@
+* text=auto
+
+# Keep repository inputs deterministic across Windows hosts and Linux containers.
+.dockerignore text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+*.csv text eol=lf
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.sh text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# Native Windows launchers, when introduced, keep Windows line endings.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Common generated binary formats must never be line-ending normalized.
+*.dll binary
+*.exe binary
+*.png binary
+*.sqlite binary
+*.sys binary
+*.zip binary

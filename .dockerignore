@@ -1,0 +1,40 @@
+.git
+.gitignore
+.dockerignore
+
+# Local evidence, private notes and scratch tools must never enter the image context.
+.sample
+.ainotes
+.aitools
+
+# Generated/private state and local configuration.
+.env
+.env.*
+!.env.example
+/state
+/inputs
+/artifacts
+/ghidra-state
+/cache
+/work
+/output
+/dist
+profiles/*.local.yaml
+profiles/aniimo.runtime.yaml
+
+# Development caches.
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# IDE and operating-system noise.
+.idea
+.vscode
+**/*.user
+**/*.suo
+**/Thumbs.db
+**/.DS_Store

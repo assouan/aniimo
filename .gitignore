@@ -1,3 +1,36 @@
-.sample
-.ainotes
-.aitools
+.sample/
+.ainotes/
+.aitools/
+
+# Local configuration and generated/private state
+.env
+.env.*
+!.env.example
+profiles/*.local.yaml
+profiles/aniimo.runtime.yaml
+/state/
+/inputs/
+/artifacts/
+/ghidra-state/
+/cache/
+/work/
+/output/
+/dist/
+
+# Tool and test caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# SQLite sidecars and editor files. Canonical local databases live under state/;
+# versioned synthetic fixture databases remain allowed.
+*.sqlite-shm
+*.sqlite-wal
+.idea/
+.vscode/
+*.user
+*.suo
