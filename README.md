@@ -13,7 +13,7 @@ Ne pas regrouper M0 et M1 dans une même livraison : M0 doit d’abord détermin
 ## Frontières du système
 
 - Le conteneur léger `capture` est le seul à voir l’installation Steam, en lecture seule. Il copie uniquement l’allowlist dans le volume nommé `inputs` et publie un snapshot atomique.
-- Le conteneur `analyzer` ne monte jamais le dossier du jeu. Il lit le snapshot courant depuis `inputs` en lecture seule, puis exécute l’analyse statique, les comparaisons, la documentation et éventuellement la compilation des assemblies managées.
+- Le conteneur `analyzer` ne monte jamais le dossier du jeu. Il revendique la remise contenant le `snapshot_id` immuable exact de ce run, lit ce snapshot depuis `inputs` en lecture seule, puis exécute l’analyse statique, les comparaisons, la documentation et éventuellement la compilation des assemblies managées. Le pointeur `current` reste un raccourci manuel et n'est pas utilisé par l'orchestration normale.
 - Le jeu et les hooks s’exécutent sous Windows dans un processus autorisé, jamais dans le conteneur Linux d’analyse.
 - L’autorisation éditeur/support applicable à la distribution est enregistrée séparément de la validation technique d’un hook ou d’un build.
 - Les entrées du jeu sont montées en lecture seule. Après la capture, les étapes travaillent exclusivement sur un snapshot immuable adressé par contenu.
@@ -28,7 +28,7 @@ La liste de copie et la liste de décompilation sont volontairement distinctes. 
 
 ## Aniimo : indices historiques à revérifier
 
-Le lot local du 16 octobre 2026 indique, pour le Steam build `25962016`, Windows x64, Unity `2022.3.62f1`, IL2CPP, xLua et un en-tête de métadonnées personnalisé. Ces éléments sont consignés dans `docs/aniimo/HISTORICAL_EVIDENCE.md` et dans `profiles/aniimo.yaml` avec le statut `unverified_for_current_installation`.
+Le lot local du 16 octobre 2026 indique, pour le Steam build `25962016`, Windows x64, Unity `2022.3.62f1`, IL2CPP, xLua et les octets de magic `AF 1B B1 FA`. Ce magic est la représentation little-endian de la valeur IL2CPP standard `0xFAB11BAF` ; la conformité du reste des métadonnées reste inconnue. Ces éléments sont consignés dans `docs/aniimo/HISTORICAL_EVIDENCE.md` et dans `profiles/aniimo.yaml` avec le statut `unverified_for_current_installation`.
 
 M0 doit les confirmer indépendamment sur `C:\Program Files (x86)\Steam\steamapps\common\Aniimo`. Aucun résultat historique n’est promu automatiquement en vérité courante.
 
@@ -50,15 +50,18 @@ Le préflight léger s'exécute à chaque run. Les contrôles stables de `doctor
 
 Le plan utilisé par `capture --dry-run` est déjà calculé par le vrai workflow puis réutilisé sans second inventaire. L'option `--dry-run` signifie uniquement « afficher ce plan et s'arrêter avant l'écriture ». `verify` et les sondes runtime restent explicites car ils valident une release ou un processus de jeu, pas une mise à jour statique ordinaire.
 
-Le préfixe littéral `ANIIMO_VOLUME_PREFIX`, par défaut `aniimo-`, produit `aniimo-inputs`, `aniimo-state`, `aniimo-artifacts`, `aniimo-ghidra`, `aniimo-cache` et `aniimo-work`. Le conteneur de capture utilise par défaut 4 CPU et 4 Gio ; l’analyseur utilise 12 CPU, 32 Gio et 24 Gio de heap Ghidra. Ces valeurs restent configurables dans `.env`.
+Le préfixe littéral `ANIIMO_VOLUME_PREFIX`, par défaut `aniimo-`, produit `aniimo-inputs`, `aniimo-handoff`, `aniimo-state`, `aniimo-artifacts`, `aniimo-ghidra`, `aniimo-cache` et `aniimo-work`. Le conteneur de capture utilise par défaut 4 CPU et 4 Gio ; l’analyseur utilise 12 CPU, 32 Gio et 24 Gio de heap Ghidra. Ces valeurs restent configurables dans `.env`.
 
-`capture` est incrémental et ne décompresse rien. Il effectue une seule lecture SHA-256 des payloads configurés, avec un contrôle léger avant/après. Un objet déjà présent n’est pas recopié. Si les clés de cache complètes sont identiques, `analyzer` marque extraction, Ghidra, décompilation et BSim comme `cache_hit`, sans relancer les outils ni réécrire les sorties. Une nouvelle DLL, archive Lua ou index modifié produit une nouvelle révision ; seules les étapes dépendantes sont invalidées.
+`capture` est incrémental et ne décompresse rien. Il effectue une seule lecture SHA-256 des payloads configurés, avec un contrôle léger avant/après. Un objet déjà présent n’est pas recopié. Si les clés de cache complètes sont identiques, `analyzer` marque extraction, Ghidra, décompilation et BSim comme `cache_hit`, sans relancer les outils ni réécrire les sorties. Les échecs C inchangés sont eux aussi mémorisés et ne sont pas retentés à chaque update. Une nouvelle DLL, archive Lua ou index modifié produit une nouvelle révision ; seules les étapes dépendantes sont invalidées.
+
+Pour chaque corps natif approuvé et lisible, l'ASM est produit indépendamment du succès du C. Les sorties utilisent les états exclusifs `c_and_asm`, `asm_only`, `disassembly_failed` et `pending`, avec un `coverage.json` réconcilié. La vue obligatoire permet de naviguer par assembly/namespace/type/méthode ou par module/fonction et lie directement C, ASM, signature, prototype natif, références et diagnostics.
 
 Chaque exécution publie sous `output/reports/<run_id>/` un rapport JSON, Markdown et CSV détaillant les étapes et sous-étapes, leurs durées, cache hits/misses, quantités traitées, erreurs et ressources mesurables. `output/reports/latest.json` pointe vers le dernier rapport complet.
 
 ## Contenu
 
 - `WORKFLOW.md` : architecture, pipeline, incrémentalité, Lua et SDK.
+- `STUDY.md` : revue externe ayant motivé les garanties ASM, couverture, reprise et remise de snapshot.
 - `AGENTS.md` : invariants de développement et de preuve.
 - `STATUS.md` : état réel des jalons et validations exécutées.
 - `CODEX_PROMPT.md` : instruction de démarrage du prochain jalon seulement.

@@ -3,7 +3,7 @@
 # Values under `historical_evidence` are discovery hints from the local sample
 # build 25962016. They are not current detection results and never authorize
 # decompilation on their own. M0 must independently verify every current input.
-schema_version: 2
+schema_version: 3
 workflow:
   default_command: update
   mode: complete_incremental
@@ -56,7 +56,9 @@ historical_evidence:
   unity_version: "2022.3.62f1"
   lua_bridge: xlua
   primary_managed_assembly_hint: FunPlus.WorldX.Scripts.dll
-  metadata_header_hex: AF1BB1FA
+  metadata_magic_hex: AF1BB1FA
+  metadata_magic_interpretation: standard_il2cpp_magic_little_endian
+  metadata_conformance_beyond_magic: unknown
   source_document: docs/aniimo/HISTORICAL_EVIDENCE.md
 
 capture:
@@ -76,6 +78,19 @@ capture:
   follow_symlinks: false
   preserve_absolute_host_paths: false
 
+handoff:
+  root: /handoff
+  slot_environment_variable: MODKIT_HANDOFF_SLOT
+  pending_record: /handoff/pending/<slot>.json
+  claimed_root: /handoff/claimed
+  completed_root: /handoff/completed
+  payload_fields: [schema_version, workflow_run_id, snapshot_id, snapshot_manifest_sha256]
+  publish_after_snapshot: true
+  atomic_publish_and_claim: true
+  reject_occupied_slot: true
+  require_exact_snapshot_manifest_match: true
+  current_pointer_usage: manual_commands_only
+
 manifests:
   input_selection: /config/aniimo.inputs.yaml
   decompilation_policy: /config/aniimo.decompilation.yaml
@@ -89,16 +104,68 @@ analysis:
   include_third_party_implementations: false
   native_export_granularity: body
   managed_export_granularity: type
-  per_function_timeout_seconds: 120
+  primary_decompile_timeout_seconds: 15
+  max_primary_timeouts_per_run: 16
   module_workers: 1
   preserve_raw_evidence: true
   fuzzy_matching: review_only
   bsim: enabled
-  bsim_scope: approved_game_integration_and_anti_cheat_bodies
+  bsim_index_scope: approved_game_integration_and_anti_cheat_bodies
+  bsim_query_scope: unresolved_or_non_exact_candidates
+  skip_bsim_query_for_exact_identity: true
   execute_enabled_stages_only_when_invalidated: true
   reuse_complete_cache_hits: true
-  protected_metadata: detect_and_fail_closed_until_adapter_validated
+  metadata_failure_states:
+    - unsupported_metadata_version
+    - inconsistent_metadata
+    - parse_error
+    - suspected_protection
+  suspected_protection_requires_evidence: true
   pe_reuse_basis: validated_load_image_context
+  native_outputs:
+    disassembly_before_decompilation: true
+    asm_required_when_instructions_available: true
+    body_output_states: [c_and_asm, asm_only, disassembly_failed, pending]
+    reject_empty_truncated_or_error_c: true
+    preserve_decompiler_warnings: true
+    continue_after_body_failure: true
+  failure_cache:
+    enabled: true
+    reuse_unchanged_failure: true
+    result_when_asm_exists: asm_only
+    key_inputs:
+      - body_bytes_and_range
+      - tool_version_and_digest
+      - decompiler_options
+      - architecture_and_abi
+      - applied_types_and_layouts
+      - managed_signature
+      - native_prototype
+      - reference_context
+      - budget_class
+    retry_triggers:
+      - body_or_range_changed
+      - tool_or_options_changed
+      - types_layout_or_signature_changed
+      - native_prototype_changed
+      - relevant_reference_context_changed
+      - budget_class_changed
+      - explicit_targeted_retry
+  difficult_queue:
+    enabled: true
+    automatic_after_primary_failure: true
+    timeout_seconds: 120
+    max_bodies_per_run: 2
+    max_wall_time_seconds: 240
+    explicit_retry_command: retry-difficult
+  coverage:
+    enabled: true
+    reconcile_approved_native_bodies: true
+    mutually_exclusive_body_states: true
+    include_expected_methods_without_body: true
+    include_unresolved_call_targets: true
+    include_unconfirmed_function_candidates: true
+    include_unattributed_executable_ranges: true
 
 lua:
   enabled: true
@@ -125,6 +192,15 @@ outputs:
   normalized_json: true
   pseudocode: approved_target_bodies
   assembly_listing: approved_target_bodies
+  native_body_manifest: native/bodies/<native_body_id>.json
+  readable_native_views: required
+  managed_view_root: native/index/by-managed-type
+  module_view_root: native/index/by-module
+  stable_unnamed_view_root: native/index/unnamed
+  readable_view_links: [c, asm, managed_signature, native_prototype, references, diagnostics]
+  coverage_json: coverage.json
+  native_bodies_csv: native_bodies.csv
+  native_prototypes_csv: native_prototypes.csv
   lua_definitions: true
   documentation: true
   overwrite_only_if_content_changed: true

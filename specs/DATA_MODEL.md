@@ -6,10 +6,10 @@ SQLite sert de registre de travail transactionnel. Exporter des JSON normalisés
 
 Tables recommandées :
 
-- capture et composants : `builds`, `external_build_refs`, `capture_rules`, `capture_observations`, `input_objects`, `input_files`, `components`, `component_revisions`, `build_components`, `snapshots` ;
-- pipeline : `analysis_runs`, `stage_runs`, `stage_inputs`, `stage_outputs`, `cache_entries`, `toolchains` ;
+- capture et composants : `builds`, `external_build_refs`, `capture_rules`, `capture_observations`, `input_candidates`, `input_objects`, `input_files`, `components`, `component_revisions`, `build_components`, `snapshots` ;
+- pipeline : `analysis_runs`, `stage_runs`, `stage_inputs`, `stage_outputs`, `cache_entries`, `toolchains`, `snapshot_handoffs` ;
 - périmètre et preuves : `evidence`, `ownership_claims`, `scope_decisions`, `scope_exceptions` ;
-- symboles : `symbols`, `symbol_observations`, `native_bodies`, `body_observations`, `symbol_body_links`, `references`, `matches`, `annotations` ;
+- symboles : `symbols`, `symbol_observations`, `native_bodies`, `body_observations`, `native_prototypes`, `native_body_attempts`, `symbol_body_links`, `references`, `unresolved_code_regions`, `coverage_reports`, `matches`, `annotations` ;
 - Lua : `lua_observations`, `lua_bindings`, `runtime_observations`, `observation_scenarios` ;
 - SDK/runtime : `api_contracts`, `capabilities`, `capability_dependencies`, `capability_bases`, `capability_validations`, `runtime_authorizations`, `test_results`.
 
@@ -27,6 +27,8 @@ Les chemins canoniques sont relatifs à une racine logique (`game:/`, `snapshot:
 
 Chaque `capture_observation` enregistre la règle et son mode : `payload` ou `inventory_only`, ainsi que le feature set actif. `input_object_id` reste nul quand aucun corps n'a été conservé. Les éléments d'inventaire n'ont pas de hash complet implicite. Le manifeste stocke aussi `selection_id`, le digest canonique de l'allowlist et la preuve de publication atomique. L'analyseur refuse un snapshot dont un payload référencé est absent ou dont la politique ne correspond pas.
 
+Un `input_candidate` provient d'un manifeste capturé, de `ScriptingAssemblies.json`, d'un import PE ou d'une référence de fichier déjà observée. Il conserve chemin logique, source de découverte, zone inspectée, métadonnées bornées et statut de revue, sans `input_object_id` ni hash complet. Son apparition dans `additional-input-candidates.json` ne l'ajoute pas implicitement à la capture ou au périmètre de décompilation.
+
 Les champs inconnus valent `null` en JSON et cellule vide en CSV. Le zéro d'une adresse, d'un offset ou d'un nombre de paramètres n'est pas un substitut à « inconnu ». Encoder les adresses en chaînes hexadécimales pour éviter la perte de précision des outils consommateurs.
 
 ## Exécutions et timings
@@ -37,13 +39,17 @@ Chaque `stage_run` contient au minimum : `step_id`, `parent_step_id`, `workflow_
 
 Les durées sont calculées avec une horloge monotone ; les timestamps muraux servent seulement à corréler les logs. Les statuts couvrent au minimum `completed`, `cache_hit`, `skipped`, `failed` et `blocked_by_dependency`. Une étape parente agrège ses enfants sans écraser leurs mesures. Le rapport calcule séparément le temps mural, la somme des durées et le chemin critique afin de représenter correctement le parallélisme.
 
-La capture publie `/inputs/run-reports/<workflow_run_id>.json`. Après analyse, les vues complètes se trouvent sous `/output/reports/<workflow_run_id>/`; `latest.json` est un pointeur atomique et non une copie. Une exécution échouée conserve les sous-étapes déjà mesurées et la raison d'arrêt.
+La capture publie `/inputs/run-reports/<workflow_run_id>.json`. Après publication du snapshot immuable, elle publie aussi un `snapshot_handoff` atomique dans le slot du run. Cet enregistrement contient exactement `workflow_run_id`, `snapshot_id` et le SHA-256 du manifeste du snapshot. L'analyseur revendique cet enregistrement avant de lire les entrées, vérifie le manifeste exact puis archive l'état de remise. Le pointeur mutable `current` ne participe jamais au chemin Compose normal.
+
+Après analyse, les vues complètes se trouvent sous `/output/reports/<workflow_run_id>/`; `latest.json` est un pointeur atomique et non une copie. Une exécution échouée conserve les sous-étapes déjà mesurées et la raison d'arrêt.
 
 ## Identité d'un symbole
 
 `symbol_id` : UUID ou identifiant alloué et conservé dans le registre, indépendant de la localisation. Une stratégie déterministe d'allocation initiale est possible, mais les renommages doivent être gérés explicitement par le registre.
 
-`signature_key` : signature canonique de l'observation, versionnée par le schéma de normalisation. Inclure l'assembly logique, le nom de type qualifié et imbriqué, le nom de méthode, l'arité générique, les types des paramètres dans l'ordre, les modificateurs de passage et le retour. Conserver les modificateurs exacts d'origine dans l'observation. Ne pas se fonder sur les noms de paramètres ou la version numérique d'assembly.
+`managed_signature` : signature logique observée côté managé. Elle conserve le type de retour, les paramètres ordonnés, leurs modificateurs, l'arité générique et le caractère `static` ou instance, avec une provenance par propriété.
+
+`signature_key` : forme canonique versionnée de cette observation. Inclure l'assembly logique, le nom de type qualifié et imbriqué, le nom de méthode, l'arité générique, le caractère statique/instance, les types des paramètres dans l'ordre, les modificateurs de passage et le retour. Conserver les modificateurs exacts d'origine dans l'observation. Ne pas se fonder sur les noms de paramètres ou la version numérique d'assembly.
 
 `name_source` : `metadata`, `debug_symbol`, `export`, `lua_source`, `binding_registration`, `runtime_observation`, `manual_alias`, `inferred`, `unknown`.
 
@@ -65,9 +71,34 @@ Les exceptions sont plus étroites que la règle qu'elles remplacent, justifiée
 
 `native_body_id` n'est pas obligatoirement le `symbol_id`. Enregistrer les associations par `symbol_body_links`, avec spécialisation générique, rôle et contexte. Les méthodes abstraites, externes, supprimées ou intégrées peuvent ne pas avoir de corps autonome identifié ; les états doivent distinguer ces cas des erreurs de décompilation.
 
+Chaque méthode attendue possède un `body_resolution_status` parmi au minimum `resolved`, `shared`, `abstract`, `external`, `stripped`, `inlined`, `unresolved` ou `not_applicable`. Les états autres que `unresolved` exigent une preuve adaptée ; l'absence d'adresse ne suffit pas à conclure qu'une méthode a été supprimée ou intégrée.
+
+`native_prototype` est séparé de `managed_signature`. Il est contextualisé par build, module, architecture, ABI et rôle du point d'entrée (`method`, `invoker`, `thunk`, `shared_body` ou autre rôle explicite). Il conserve convention d'appel, retour natif, paramètres visibles et cachés, provenance et statut. Un adaptateur ne recopie jamais aveuglément la signature managée sur tous les points d'entrée natifs.
+
+Chaque corps approuvé possède exactement un `body_output_status` :
+
+- `c_and_asm` : C valide et ASM disponible ;
+- `asm_only` : ASM disponible et absence de C expliquée ;
+- `disassembly_failed` : les octets et le contexte disponibles sont conservés, mais l'ASM n'a pas pu être établi ;
+- `pending` : corps identifié mais tentative pas encore terminée.
+
+Le désassemblage est exporté avant ou indépendamment de la décompilation. Un fichier C vide, tronqué ou contenant seulement un diagnostic n'est jamais un succès. Les avertissements du décompilateur restent attachés à la tentative même si le C est produit. Un échec local n'interrompt pas les autres corps.
+
+Chaque `native_body_attempt` enregistre corps et plage exacts, contexte de références, versions/digests d'outil, options, types/layouts appliqués, signatures, prototype natif, classe de budget, diagnostic, avertissements et artefacts disponibles. Un échec inchangé est un résultat de cache réutilisable. Une nouvelle tentative n'est permise que si le corps ou sa plage, l'outil/options, les types/layouts/signatures, le prototype, le contexte pertinent ou la classe de budget a changé, ou sur demande ciblée explicite.
+
 Une localisation native est attachée au build, au hash exact du module, à l'architecture et au format de fichier. Pour un PE, distinguer `rva`, `file_offset`, `preferred_va` et adresse effective observée en processus. Une adresse effective de runtime n'est pas un identifiant stable. Les locations Mono utilisent leur propre `location_kind` : IL/token/JIT observé, sans prétendre qu'un RVA de méthode IL pointe vers du code natif appelable.
 
 Ne pas écraser les localisations précédentes. Un module identique peut réutiliser son extraction locale, mais les dépendances de contexte restent à vérifier.
+
+## Couverture et lacunes
+
+Le rapport de couverture distingue trois inventaires sans les confondre : méthodes attendues/observées, corps natifs et candidats/zones non résolus. Pour une analyse donnée, la réconciliation suivante est une égalité exacte sur des ensembles disjoints :
+
+`corps approuvés = c_and_asm + asm_only + disassembly_failed + pending`.
+
+Un corps partagé compte une fois dans cet inventaire et conserve toutes ses associations dans `symbol_body_links`. Le rapport détaille aussi les méthodes attendues sans corps résolu, pointeurs et cibles d'appel non résolus, candidats de fonctions non confirmés et plages exécutables non attribuées. Une plage exécutable inconnue n'est pas automatiquement présentée comme une fonction. Chaque lacune conserve origine de découverte, plage ou cible brute si connue, raison, preuves et prochaine action possible.
+
+`coverage.json` est calculé depuis le registre et contient les comptes ainsi que les identifiants des éléments de chaque catégorie. Il distingue explicitement « tous les corps identifiés ont été traités » de « aucune zone pertinente ne reste à découvrir » ; aucun pourcentage global ne remplace ces deux constats.
 
 ## Empreintes et références
 
@@ -100,6 +131,8 @@ UTF-8, ordre déterministe des colonnes et des lignes, échappement CSV standard
 | Fichier | Contenu |
 |---|---|
 | `methods.csv` | Identité, assembly, type, nom, signature, provenance, état |
+| `native_bodies.csv` | Corps, origine de découverte, plage, décision de périmètre, état C/ASM et diagnostic |
+| `native_prototypes.csv` | Prototype par point d'entrée, build, architecture, ABI, rôle et provenance |
 | `native_locations.csv` | Corps/point d'entrée par build et module, rôle, RVA/offset |
 | `symbol_body_links.csv` | Association méthode-corps, rôle et instanciation générique |
 | `types.csv` | Types, bases connues, taille/layout et provenance |

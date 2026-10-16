@@ -9,5 +9,7 @@ Les ADR consignent les décisions qui doivent survivre aux notes temporaires et 
 - `0005-capture-analyzer-input-boundary.md`
 - `0006-lean-default-workflow.md`
 - `0007-complete-default-update-and-timing-report.md`
+- `0008-native-output-coverage-and-retry.md`
+- `0009-exact-snapshot-handoff.md`
 
 Statuts utilisés : `accepted`, `superseded`, `rejected`. Une nouvelle décision remplace une ancienne sans réécrire son historique.

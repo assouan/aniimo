@@ -3,8 +3,8 @@
 # Only payload_rules are copied into the immutable input volume. Inventory
 # rules record bounded metadata so a newly discovered module can be reviewed
 # and explicitly added later without copying the complete game installation.
-schema_version: 2
-selection_id: aniimo-static-inputs-v4
+schema_version: 3
+selection_id: aniimo-static-inputs-v5
 
 source:
   game_root: /source/game
@@ -47,6 +47,7 @@ policy:
   unchanged_object_action: reuse_without_copy
   decompress_during_capture: false
   debug_symbol_use_requires_binary_match: true
+  function_map_use_requires_binary_match: true
   missing_required: fail_capture
   missing_optional: record_absent
   unmatched_glob: record_absent
@@ -115,6 +116,11 @@ payload_rules:
     selector: {type: exact, path: GameAssembly.pdb}
     required: false
     roles: [debug_symbols]
+  - id: il2cpp-symbol-map
+    feature: core
+    selector: {type: exact, path: SymbolMap}
+    required: false
+    roles: [il2cpp_managed_function_map, function_boundary_evidence]
   - id: fpx-game-debug-symbol
     feature: core
     selector: {type: exact, path: Aniimo_Data/Plugins/x86_64/FPXGame.pdb}
@@ -270,14 +276,35 @@ inventory_rules:
     selector: {type: glob, path: "*.exe", max_matches: 256}
     record: [logical_path, size_bytes, mtime_ns, pe_machine, pe_timestamp, signer_fingerprint]
   - id: native-plugin-inventory
-    selector: {type: glob, path: "Aniimo_Data/Plugins/x86_64/*.dll", max_matches: 2048}
+    selector: {type: glob, path: "Aniimo_Data/Plugins/**/*.dll", max_matches: 4096}
     record: [logical_path, size_bytes, mtime_ns, pe_machine, pe_timestamp, signer_fingerprint]
   - id: root-pdb-inventory
     selector: {type: glob, path: "*.pdb", max_matches: 128}
     record: [logical_path, size_bytes, mtime_ns]
   - id: plugin-pdb-inventory
-    selector: {type: glob, path: "Aniimo_Data/Plugins/x86_64/*.pdb", max_matches: 512}
+    selector: {type: glob, path: "Aniimo_Data/Plugins/**/*.pdb", max_matches: 1024}
     record: [logical_path, size_bytes, mtime_ns]
+
+# This pass discovers paths only from already captured manifests, assembly
+# inventories and PE references. It never expands to a full asset scan, hashes
+# a candidate body, or adds it to the snapshot automatically.
+candidate_inventory:
+  enabled: true
+  mode: manifest_and_reference_guided_metadata_only
+  sources:
+    - captured_content_manifests
+    - scripting_assemblies_json
+    - selected_pe_imports
+    - explicit_paths_from_parsed_selected_inputs
+  inspected_zones:
+    - {path: ., max_depth: 1, extensions: [.dll, .exe, .sys, .pdb]}
+    - {path: Aniimo_Data/Plugins, max_depth: 4, extensions: [.dll, .exe, .pdb]}
+    - {path: Aniimo_Data/il2cpp_data, max_depth: 4, names: [global-metadata.dat]}
+  max_candidates: 8192
+  retain_file_bodies: false
+  hash_file_bodies: false
+  decompress_assets: false
+  output: additional-input-candidates.json
 
 coherence_groups:
   - id: il2cpp_pair

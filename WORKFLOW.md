@@ -10,7 +10,7 @@ L'analyse statique doit être exécutable dans un conteneur Linux. L'observation
 
 Le produit visé accepte des mods `.dll`, mais ne suppose pas qu'Aniimo possède un serveur dédié comparable à celui d'ARK. M0 doit identifier le processus cible, le contexte client/serveur, l'autorité réelle sur l'état de jeu et les modes autorisés. Si seul le client Windows existe, le runtime reste une API de mods cliente et ne promet pas des capacités serveur globales.
 
-Le dossier local `.sample` documente un ancien lot daté du 16 octobre 2026. Il fournit des indices historiques — Windows x64, IL2CPP, Unity `2022.3.62f1`, xLua, Steam build `25962016`, module principal pressenti `FunPlus.WorldX.Scripts.dll` et métadonnées à en-tête personnalisé — mais **aucun de ces éléments n'est un résultat courant**. Le pipeline doit fonctionner lorsque `.sample` est absent. Les faits retenus sont importés avec une provenance et le statut `historical_unverified`, puis confirmés ou contredits sur le snapshot courant.
+Le dossier local `.sample` documente un ancien lot daté du 16 octobre 2026. Il fournit des indices historiques — Windows x64, IL2CPP, Unity `2022.3.62f1`, xLua, Steam build `25962016`, module principal pressenti `FunPlus.WorldX.Scripts.dll` et octets initiaux de métadonnées `AF 1B B1 FA` — mais **aucun de ces éléments n'est un résultat courant**. Ces octets sont le magic IL2CPP standard `0xFAB11BAF` stocké en little-endian ; ils ne prouvent ni que le reste du fichier est standard, ni qu'il est personnalisé ou protégé. Le pipeline doit fonctionner lorsque `.sample` est absent. Les faits retenus sont importés avec une provenance et le statut `historical_unverified`, puis confirmés ou contredits sur le snapshot courant. [S31]
 
 L'exploitant du projet a explicitement autorisé l'analyse complète de l'anti-cheat dans son environnement éditeur/serveur. Le profil Aniimo traite donc `NEP2.dll`, `NEPKernel.sys`, `NEPCleaner.exe` et `KernelDumpAnalyzer.exe` comme des cibles natives complètes à capturer, décompiler et documenter. M0 doit encore confirmer leur présence, leur format et leurs relations sur le build courant ; il ne doit pas inventer un résultat depuis les seuls noms historiques. Toute autorisation applicable à un futur package distribué reste enregistrée séparément de sa validation technique.
 
@@ -38,7 +38,7 @@ Le mode `full` signifie « toutes les implémentations retenues et approuvées d
 
 ## 2. Stack minimale
 
-Utiliser un orchestrateur Python, SQLite comme registre local et des fichiers JSON/CSV comme échanges. Les outils externes sont isolés derrière des adaptateurs. Une image minimale de capture, une image d'analyse, six volumes nommés aux responsabilités séparées et un répertoire de sorties suffisent pour le MVP. Ne pas ajouter de cluster, de service de recherche, de serveur de base de données ou de BSim distribué sans besoin mesuré.
+Utiliser un orchestrateur Python, SQLite comme registre local et des fichiers JSON/CSV comme échanges. Les outils externes sont isolés derrière des adaptateurs. Une image minimale de capture, une image d'analyse, sept volumes nommés aux responsabilités séparées — dont une remise opérationnelle légère — et un répertoire de sorties suffisent pour le MVP. Ne pas ajouter de cluster, de service de recherche, de serveur de base de données ou de BSim distribué sans besoin mesuré.
 
 Choix à évaluer sur le jeu :
 
@@ -109,6 +109,11 @@ inputs/                        # Named volume: <prefix>inputs; analyzer read-onl
   snapshots/<snapshot_id>/
   current.json
 
+handoff/                       # Named volume: <prefix>handoff; operational only
+  pending/<slot>.json
+  claimed/
+  completed/
+
 state/                         # Named volume: <prefix>state
   registry.sqlite
   checkpoints/
@@ -131,14 +136,19 @@ output/                        # Generated, never edited manually
     symbols/
     managed/
     native/
+      bodies/
+      index/by-managed-type/
+      index/by-module/
+      index/unnamed/
     lua/
     docs/
     reports/
+    coverage.json
   current.json
   approved.json
 ```
 
-Les volumes `inputs`, `state`, `artifacts`, `ghidra-state`, `cache` et `work`, ainsi que le dossier `output`, ne sont pas des copies de travail à modifier manuellement. Le dépôt Git conserve surtout le code de l'outil, les profils, les annotations et les contrats. Une vue normalisée peut être versionnée en privé pour les revues, sans obliger à stocker chaque binaire et chaque export dans Git. Le CAS `inputs` reste append-only dans le MVP. Son futur garbage collector exigera un pinset exporté depuis le registre ; il ne déduira jamais seul qu'un ancien snapshot est inutile. Le CAS `artifacts` utilise un mark-and-sweep explicite qui protège toute analyse publiée ou approbation.
+Les volumes `inputs`, `handoff`, `state`, `artifacts`, `ghidra-state`, `cache` et `work`, ainsi que le dossier `output`, ne sont pas des copies de travail à modifier manuellement. `handoff` ne contient que des remises opérationnelles identifiées ; aucun octet du jeu. Le dépôt Git conserve surtout le code de l'outil, les profils, les annotations et les contrats. Une vue normalisée peut être versionnée en privé pour les revues, sans obliger à stocker chaque binaire et chaque export dans Git. Le CAS `inputs` reste append-only dans le MVP. Son futur garbage collector exigera un pinset exporté depuis le registre ; il ne déduira jamais seul qu'un ancien snapshot est inutile. Le CAS `artifacts` utilise un mark-and-sweep explicite qui protège toute analyse publiée ou approbation.
 
 `current.json` pointe vers le dernier ensemble d'artefacts d'analyse complet. `approved.json` identifie les capacités runtime validées, leur empreinte de dépendances, leur environnement et leurs preuves. Un succès d'analyse ne doit jamais mettre automatiquement à jour l'approbation runtime.
 
@@ -174,7 +184,9 @@ Lors d'une capture normale, exécuter le préflight rapide : profil lisible, mou
 
 Activer par défaut les feature sets `core`, `lua`, `content_indexes` et `anti_cheat`. Lire chaque `payload_rule` activée une seule fois par tentative, calculer SHA-256 sur le flux et contrôler taille/identité avant et après la lecture. Une dérive déclenche au maximum une nouvelle tentative, puis la capture échoue. Les règles d'inventaire ne lisent que leurs champs bornés et ne calculent pas le hash complet des composants exclus. La capture ne décompresse aucun fichier.
 
-Pour un candidat inchangé, hacher sans écrire de staging ; si l'objet existe déjà, le référencer sans recopie. Pour un fichier nouveau ou dont les métadonnées ont changé, hacher pendant l'écriture en staging puis publier l'objet atomiquement. Un cas rare où les métadonnées sont identiques mais le SHA diffère nécessite une seconde lecture pour stocker les nouveaux octets ; ce n'est pas une double passe systématique. Construire ensuite le manifeste et la vue du snapshot, puis publier atomiquement `/inputs/current.json`. Toutes les étapes B à H lisent ce volume en lecture seule. Une dérive persistante, une paire IL2CPP incohérente ou un manifeste Steam non stabilisé invalide la capture entière.
+Pour un candidat inchangé, hacher sans écrire de staging ; si l'objet existe déjà, le référencer sans recopie. Pour un fichier nouveau ou dont les métadonnées ont changé, hacher pendant l'écriture en staging puis publier l'objet atomiquement. Un cas rare où les métadonnées sont identiques mais le SHA diffère nécessite une seconde lecture pour stocker les nouveaux octets ; ce n'est pas une double passe systématique. Construire ensuite le manifeste et la vue du snapshot, puis publier atomiquement `/inputs/current.json` comme raccourci manuel.
+
+Le chemin Compose publie ensuite dans `/handoff/pending/<slot>.json` une remise atomique contenant le `run_id`, le `snapshot_id` immuable exact et le digest de son manifeste. L'analyseur revendique cette remise, vérifie le manifeste et n'utilise jamais `current` pour décider quel snapshot analyser. Un slot déjà occupé fait échouer la nouvelle capture ; des orchestrations concurrentes emploient des slots distincts. Toutes les étapes B à H lisent `inputs` en lecture seule. Une dérive persistante, une paire IL2CPP incohérente ou un manifeste Steam non stabilisé invalide la capture entière.
 
 `profiles/aniimo.decompilation.yaml` est une politique séparée. La présence d'un payload dans `inputs` signifie seulement qu'il est disponible pour détection, références ou analyse ; seul `scope-plan.json`, complété par des décisions prouvées, autorise l'export d'une implémentation.
 
@@ -186,6 +198,8 @@ Hacher les contenus activés, et non uniquement les dates, tailles ou signatures
 
 Produire `detection.json` puis un plan explicite : entrées inchangées, ajouts, retraits, étapes invalidées et raisons. Classer les composants en code du jeu, moteur, bibliothèques tierces, runtime, scripts et conteneurs d'assets.
 
+Compléter l'allowlist par un inventaire borné guidé par les manifestes capturés, `ScriptingAssemblies.json`, les imports PE et les références déjà observées. Il produit `additional-input-candidates.json` avec les zones réellement inspectées, sans conserver ni hacher les corps candidats et sans parcourir ou décompresser tous les assets. Une nouvelle cible doit toujours être ajoutée explicitement à l'allowlist avant sa capture.
+
 Les motifs de noms du profil produisent des indices de classification, jamais directement une décision `game_decompile`. Une décision de périmètre est une donnée versionnée avec sujet, portée, preuves, raison, auteur/reviewer et version de politique. Les nouveaux composants Aniimo et les corps sans propriétaire fiable restent `needs_review`.
 
 Indexer largement les métadonnées ; décompiler en priorité le code du jeu et les points d'intégration nécessaires. Le mode `full` couvre tous les corps natifs reconnus dans le périmètre autorisé, pas toutes les DLL système par défaut.
@@ -194,7 +208,7 @@ Indexer largement les métadonnées ; décompiler en priorité le code du jeu et
 
 Mono : métadonnées, types, méthodes, signatures, corps IL, champs, attributs, chaînes et références via des bibliothèques de lecture d'assemblies. Export C# par type avec ILSpy. Une assembly modifiée peut devoir être redécompilée intégralement, puis ses sorties comparées avant publication.
 
-IL2CPP : traiter le binaire et son fichier de métadonnées comme une unité de cohérence. Extraire les noms, types, layouts, champs, signatures et correspondances de code disponibles. Toute extraction incomplète doit être signalée, jamais convertie en un catalogue vide marqué « succès ». Pour Aniimo, un en-tête ou format personnalisé non reconnu produit `unsupported_protected_metadata` jusqu'à validation d'un adaptateur spécifique ; aucun alignement historique ou ordinal ne remplace silencieusement l'extraction courante.
+IL2CPP : traiter le binaire et son fichier de métadonnées comme une unité de cohérence. Extraire les noms, types, layouts, champs, signatures et correspondances de code disponibles. Toute extraction incomplète doit être signalée, jamais convertie en un catalogue vide marqué « succès ». Classer séparément `unsupported_metadata_version`, `inconsistent_metadata`, `parse_error` et `suspected_protection` ; ce dernier statut exige des preuves autres que le magic standard. Aucun alignement historique ou ordinal ne remplace silencieusement l'extraction courante. Un `SymbolMap` distribué peut compléter les limites/adresses de fonctions seulement après vérification de sa cohérence avec le module exact. [S31, S32]
 
 ### Étape D — Analyse Ghidra
 
@@ -202,13 +216,17 @@ Conserver un programme par entrée d'analyse sémantique et configuration ; ne p
 
 Une différence limitée au certificat PE n'autorise pas à comparer seulement `.text` et une section nommée `il2cpp`. La réutilisation d'un projet exige un manifeste du contexte de chargement pertinent : architecture, en-têtes et sections mappées, RVA/caractéristiques, imports, exports, relocations, données d'exception/unwind, tables et données référencées. En cas de doute, importer et analyser à nouveau.
 
-Le script doit d'abord parcourir les fonctions reconnues, établir un index et calculer les caractéristiques nécessaires. Il décompile ensuite la liste demandée par le plan. Un timeout produit une entrée d'erreur avec preuve et motif, pas un fichier vide prétendument valide.
+Le script doit d'abord parcourir les fonctions reconnues, établir un index et calculer les caractéristiques nécessaires. Pour chaque corps approuvé dont les instructions sont disponibles, il exporte l'ASM avant ou indépendamment de l'appel au décompilateur, puis tente le C demandé par le plan. Le résultat appartient exactement à `c_and_asm`, `asm_only`, `disassembly_failed` ou `pending`. Un C vide, tronqué ou réduit à un diagnostic n'est jamais une réussite. Un timeout ou une exception conserve l'ASM et le diagnostic quand ils existent, puis laisse les autres fonctions continuer. Les avertissements Ghidra sont conservés même lorsque la décompilation est terminée. [S07]
+
+La première passe possède un petit timeout par corps et un plafond de timeouts par run. Une fois le plafond atteint, les corps non encore tentés restent `pending` et sont repris automatiquement par les updates suivantes ; ils ne disparaissent pas du bilan. Les échecs C sont mis en cache avec le corps/plage, le contexte, l'outil, les options, les types/signatures/prototypes et la classe de budget. À conditions identiques, une update réutilise `asm_only` sans rappeler Ghidra. Une file automatique de fonctions difficiles est limitée à deux corps et quatre minutes par run dans le profil Aniimo ; une nouvelle tentative supplémentaire exige un changement pertinent ou `retry-difficult` ciblé.
 
 Un module natif recompilé peut nécessiter une nouvelle auto-analyse globale. La pipeline doit réduire le travail réutilisable, pas prétendre que quelques octets différents suffisent à reconstruire toutes les limites de fonctions.
 
 ### Étape E — Appariement entre builds
 
 Ordre de préférence : identité managée issue des métadonnées ; symboles de débogage valides pour le binaire exact ; signatures/logique déjà approuvées ; empreintes et références concordantes ; similarité de graphe et BSim pour proposer des candidats ; revue humaine.
+
+La construction de l'index BSim et ses requêtes sont deux opérations distinctes. Une identité exacte déjà établie par métadonnées ou symboles n'exécute pas une recherche fuzzy inutile ; BSim sert aux éléments non résolus et ses résultats restent des candidats.
 
 Conserver les alternatives et contradictions, pas seulement le meilleur score. Un score n'est pas une probabilité calibrée de correction. Un appariement logique n'est pas une preuve d'équivalence comportementale ni une autorisation d'appeler la fonction.
 
@@ -220,7 +238,7 @@ Propager l'invalidation vers les consommateurs connus. Si une dépendance ne peu
 
 ### Étape G — Génération et contrôle
 
-Émettre les exports par corps/type, les CSV, les définitions Lua, les pages de documentation et le rapport de différences. Réutiliser uniquement les objets dont la clé de cache et le contexte sont vérifiés. Ne réécrire une sortie visible que si son contenu change.
+Émettre les exports par corps/type, les CSV, les définitions Lua, les pages de documentation et le rapport de différences. Calculer `coverage.json` et `native_bodies.csv` depuis le registre. La réconciliation obligatoire est : corps approuvés = `c_and_asm` + `asm_only` + `disassembly_failed` + `pending`, catégories exclusives et corps partagé compté une fois. Rapporter séparément les méthodes attendues sans corps, appels/cibles non résolus, candidats non confirmés et plages exécutables non attribuées. Réutiliser uniquement les objets dont la clé de cache et le contexte sont vérifiés. Ne réécrire une sortie visible que si son contenu change.
 
 Conserver les octets identiques dans un stockage adressé par contenu. Les manifests de la nouvelle analyse référencent ces objets ; il n'est pas nécessaire de recopier tous les fichiers dans chaque snapshot.
 
@@ -230,7 +248,7 @@ Construire dans un espace temporaire. Vérifier les schémas, les références e
 
 ### Chemin rapide et contrôles
 
-Le run quotidien utilise une commande Compose qui enchaîne préflight/doctor, plan et écriture de capture, puis préflight/doctor et `analyze --snapshot current` après succès. Le plan de capture est résolu une fois et réutilisé pour l'écriture ; `capture --dry-run` est le même chemin arrêté avant toute écriture. `analyze` calcule son plan d'invalidation avant d'agir. Ghidra et BSim sont activés par défaut, mais si les entrées, les outils, la configuration et les annotations pertinentes ont les mêmes digests, ils sont marqués `cache_hit` sans être invoqués et aucune sortie n'est réécrite.
+Le run quotidien utilise une commande Compose qui enchaîne préflight/doctor, plan et écriture de capture, publication de la remise exacte, puis préflight/doctor et `analyze --handoff required` après succès. Le plan de capture est résolu une fois et réutilisé pour l'écriture ; `capture --dry-run` est le même chemin arrêté avant toute écriture. `analyze` calcule son plan d'invalidation avant d'agir. Ghidra et BSim sont activés par défaut, mais si les entrées, les outils, la configuration et les annotations pertinentes ont les mêmes digests, ils sont marqués `cache_hit` sans être invoqués et aucune sortie n'est réécrite. Un échec C déjà connu est également un cache hit tant qu'aucun déclencheur de reprise n'a changé.
 
 Les contrôles obligatoires par run sont uniquement ceux qui protègent la cohérence : préflight rapide, résultat mis en cache du doctor stable, parsing de configuration, présence des entrées requises, hash des payloads activés, contrôle avant/après lecture, cohérence des groupes, validation du manifeste, calcul des clés de cache et publication atomique. Le refresh complet de `doctor`, l'arrêt volontaire `--dry-run`, les sondes runtime, les tests de compatibilité d'outils et la matrice d'acceptation complète restent explicites.
 
@@ -282,10 +300,12 @@ native/bodies/<native_body_id>.asm
 native/bodies/<native_body_id>.json
 native/bodies/<native_body_id>.refs.json
 native/types/<type_id>.h
-native/index/by-class/<assembly>/<namespace>/<type>/index.json
+native/index/by-managed-type/<assembly>/<namespace>/<type>/index.json
+native/index/by-module/<module>/index.json
+native/index/unnamed/<module>/<native_body_id>/index.json
 ```
 
-Une vue navigable peut présenter `TakeDamage__<symbol_id>.c` sous le type concerné, mais doit référencer le corps canonique au lieu de dupliquer une implémentation partagée en la présentant comme indépendante. Prévoir des noms de chemins portables, une gestion des surcharges, des génériques, des noms imbriqués et des collisions.
+La vue navigable est obligatoire. Lorsque l'origine managée est connue, elle suit assembly → namespace → type → méthode ; sinon elle suit module → fonction, avec un chemin stable `unnamed` tant que le nom n'est pas établi. Chaque entrée lisible utilise un nom tel que `TakeDamage__<symbol_id>` et lie directement C, ASM, signature managée, prototype natif, références et diagnostics. Elle référence le corps canonique au lieu de dupliquer une implémentation partagée en la présentant comme indépendante. Prévoir des noms de chemins portables, une gestion des surcharges, des génériques, des noms imbriqués et des collisions.
 
 Ne pas découper par paquets arbitraires de lignes et ne pas utiliser une regex sur un gigantesque export C. Utiliser `DecompInterface.decompileFunction` puis le résultat de la fonction. [S06, S07]
 
@@ -343,7 +363,7 @@ Interop / metadata resolver / validated native hook
 Authorized game or server process
 ```
 
-Évaluer BepInEx pour le chargement et Il2CppInterop pour l'interopérabilité IL2CPP, plutôt que réécrire ces couches sans nécessité. Leur support doit être validé sur le jeu et la plateforme réels. Les possibilités de patching du code managé et du code natif ne sont pas interchangeables. [S14, S15, S24]
+Évaluer BepInEx pour le chargement et Il2CppInterop pour l'interopérabilité IL2CPP, plutôt que réécrire ces couches sans nécessité. Leur support doit être validé sur le jeu et la plateforme réels. Une DLL managée C# s'appuie sur un loader et une interop adaptés ; une DLL native C/C++ exige un contrat séparé pour ABI, handles, conventions d'appel, durée de vie et callbacks. Les possibilités de patching du code managé et du code natif ne sont pas interchangeables. [S14, S15, S24]
 
 Exposer des interfaces de domaine stables : joueurs, inventaires, événements, entités, configuration et planification. Conserver les objets du jeu derrière des adaptateurs et handles contrôlés ; ne pas laisser chaque mod manipuler les offsets et structures natives. Une couche basse expérimentale peut exister, explicitement hors contrat de stabilité.
 
@@ -367,7 +387,7 @@ Deux niveaux : référence interne extraite, potentiellement vaste et incertaine
 
 Chaque page décrit signature, provenance du nom, disponibilité, build, contexte client/serveur, contraintes d'appel connues, dépendances pertinentes, exemples testés et changements. Un « nom inconnu » ou un « type de retour non établi » est une information valide.
 
-Pour éviter des centaines de milliers de pages, produire une navigation par assembly/type/module, des ancres par symbole et des index paginés. Garder l'ASM et les traces détaillées en artefacts internes.
+Pour éviter des centaines de milliers de pages, produire une navigation par assembly/type/module, des ancres par symbole et des index paginés. Chaque fiche minimale lie le C et l'ASM, la signature logique et le prototype natif connus, les appelants/appelés, types/données référencés, diagnostics, changements et preuves. L'ASM reste un artefact interne obligatoire et directement accessible depuis la vue lorsque les instructions sont disponibles.
 
 Les annotations humaines sont rattachées aux identifiants persistants, avec leur domaine d'applicabilité. Une correspondance incertaine suspend leur transfert automatique. Un changement de comportement marque les exemples et explications dépendants comme à revoir.
 
@@ -379,9 +399,9 @@ M-1 : contrat d'architecture, hygiène Git/Docker, profil Aniimo prudent, décis
 
 M0 : bundle d'acquisition borné et diagnostic en lecture seule du build courant, classification initiale, import séparé des preuves historiques et sélection vérifiée d'outils. Le bundle réside sous `.aitools/m0-acquisition/<capture_id>/`, applique les feature sets par défaut `core`, `lua`, `content_indexes` et `anti_cheat` de `profiles/aniimo.inputs.yaml` et contient un manifeste canonique, les hashes et les copies immuables des seules entrées autorisées ; il ne fige pas le schéma du CAS de production. Livrer `detection.json`, `scope-plan.json`, `tool-compatibility.json` et le rapport, puis s'arrêter.
 
-M1 : images séparées `capture`/`analyzer`, orchestration en une commande, préflight/doctor mis en cache, commandes `doctor`/`capture`/`plan`/`analyze`, manifeste, registre, migrations, identités, CAS d'entrées et d'artefacts, snapshots, plans réutilisables, cache, checkpoints, rapport détaillé de timings, petites fixtures et exécution sans changement. Prouver que l'analyseur ne reçoit aucun bind mount Steam, que `inputs` y est read-only, qu'un dry-run et la capture partagent le même planificateur et qu'un cache hit Ghidra/BSim n'appelle aucun outil lourd. Réimporter avec validation ou recapturer le bundle M0 ; ne jamais lui attribuer implicitement le nouveau contrat.
+M1 : images séparées `capture`/`analyzer`, orchestration en une commande, préflight/doctor mis en cache, commandes `doctor`/`capture`/`plan`/`analyze`, manifeste, registre, migrations, identités, CAS d'entrées et d'artefacts, snapshots, remises exactes, plans réutilisables, cache, checkpoints, rapport détaillé de timings, petites fixtures et exécution sans changement. Prouver que l'analyseur ne reçoit aucun bind mount Steam, que `inputs` y est read-only, que deux captures entrelacées consomment chacune leur `snapshot_id`, qu'un dry-run et la capture partagent le même planificateur et qu'un cache hit Ghidra/BSim n'appelle aucun outil lourd. Réimporter avec validation ou recapturer le bundle M0 ; ne jamais lui attribuer implicitement le nouveau contrat.
 
-M2 : branche Mono ou IL2CPP réelle, CSV et découpage propre du code, sans imposer l'autre backend avant que le premier fonctionne.
+M2 : branche Mono ou IL2CPP réelle, CSV et découpage propre du code, sans imposer l'autre backend avant que le premier fonctionne. Sur de petites fixtures, prouver le corps partagé, l'ASM conservé après timeout C, la réutilisation de cet échec au second run, le changement total d'un corps rattaché au même symbole, l'invalidation par constante/layout et la visibilité d'une méthode sans corps résolu. Le critère de livraison est de pouvoir ouvrir une classe ou un module, atteindre chaque fonction dans son fichier séparé, son ASM et ses références, puis voir exactement les éléments `asm_only`, `disassembly_failed`, `pending` ou non résolus.
 
 M3 : comparaison multi-build, invalidation des layouts/références, revue d'appariement et documentation incrémentale.
 

@@ -1,7 +1,7 @@
 # Generic bounded capture allowlist. Copy this file and add only inputs needed
 # for detection, references, or approved analysis. Never default to `**/*`.
-schema_version: 2
-selection_id: target-game-static-inputs-v2
+schema_version: 3
+selection_id: target-game-static-inputs-v3
 
 source:
   game_root: /source/game
@@ -37,6 +37,7 @@ policy:
   unchanged_object_action: reuse_without_copy
   decompress_during_capture: false
   debug_symbol_use_requires_binary_match: true
+  function_map_use_requires_binary_match: true
   missing_required: fail_capture
   missing_optional: record_absent
   inventory_with_storage_action: merge_metadata
@@ -49,6 +50,17 @@ payload_rules: []
 external_payload_rules: []
 inventory_rules: []
 coherence_groups: []
+
+candidate_inventory:
+  enabled: true
+  mode: manifest_and_reference_guided_metadata_only
+  sources: [captured_manifests, selected_binary_references]
+  inspected_zones: []
+  max_candidates: 4096
+  retain_file_bodies: false
+  hash_file_bodies: false
+  decompress_assets: false
+  output: additional-input-candidates.json
 
 always_excluded_paths:
   - "**/Logs/**"

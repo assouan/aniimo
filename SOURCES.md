@@ -130,3 +130,15 @@ La documentation qualifie les builds IL2CPP concernés de Bleeding Edge ; une ve
 ## S30 — Ghidra : prérequis de la distribution courante
 
 `https://github.com/NationalSecurityAgency/ghidra/blob/master/GhidraDocs/GettingStarted.md`
+
+## S31 — Il2CppDumper : magic des métadonnées IL2CPP
+
+`https://github.com/Perfare/Il2CppDumper/blob/master/Il2CppDumper/Il2Cpp/Metadata.cs`
+
+Le parseur vérifie la valeur `0xFAB11BAF`. Les octets historiques `AF 1B B1 FA` sont cette valeur encodée en little-endian ; ils ne suffisent pas à qualifier le reste du fichier.
+
+## S32 — Unity : fichier SymbolMap IL2CPP Windows
+
+`https://docs.unity3d.com/es/2018.4/Manual/WindowsPlayerIL2CPPBuildProducedFiles.html`
+
+Unity décrit `SymbolMap` comme une liste des adresses et longueurs des fonctions managées. Sa présence dans une distribution n'est pas garantie et sa cohérence avec le module courant doit être vérifiée.

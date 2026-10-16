@@ -4,9 +4,9 @@
 # with evidence-backed component decisions in scope-plan.json. The exact NEP
 # entries below are explicit full-module exceptions authorized by the project
 # owner; unknown components still fail closed.
-schema_version: 1
-policy_id: aniimo-authorized-analysis-v2
-input_selection_id: aniimo-static-inputs-v4
+schema_version: 2
+policy_id: aniimo-authorized-analysis-v3
+input_selection_id: aniimo-static-inputs-v5
 
 defaults:
   unknown_ownership: needs_review
@@ -79,3 +79,10 @@ exports:
   external_implementations: explicit_approved_modules_only
   pseudocode: approved_target_bodies
   assembly_listing: approved_target_bodies
+  disassembly_before_decompilation: true
+  asm_required_when_instructions_available: true
+  reject_empty_truncated_or_error_c: true
+  preserve_decompiler_warnings: true
+  continue_after_body_failure: true
+  body_output_states: [c_and_asm, asm_only, disassembly_failed, pending]
+  readable_views: required

@@ -22,6 +22,7 @@ services:
       TMPDIR: /tmp
       MODKIT_CONFIG: /config/aniimo.yaml
       MODKIT_INPUT_SELECTION: /config/aniimo.inputs.yaml
+      MODKIT_HANDOFF_SLOT: "${ANIIMO_HANDOFF_SLOT:-aniimo-default}"
     volumes:
       # Only this service can see the mutable live installation.
       - type: bind
@@ -43,6 +44,9 @@ services:
       - type: volume
         source: modkit-inputs
         target: /inputs
+      - type: volume
+        source: modkit-handoff
+        target: /handoff
     tmpfs:
       - /tmp:rw,nosuid,nodev,size=512m
     cpus: "${CAPTURE_CPUS:-4}"
@@ -61,7 +65,7 @@ services:
         MODKIT_UID: "${LOCAL_UID:-1000}"
         MODKIT_GID: "${LOCAL_GID:-1000}"
     entrypoint: ["modkit"]
-    command: ["analyze", "--config", "/config/aniimo.yaml", "--snapshot", "current"]
+    command: ["analyze", "--config", "/config/aniimo.yaml", "--handoff", "required"]
     user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
     read_only: true
     network_mode: none
@@ -78,6 +82,7 @@ services:
       MODKIT_CONFIG: /config/aniimo.yaml
       MODKIT_INPUT_SELECTION: /config/aniimo.inputs.yaml
       MODKIT_DECOMPILATION_POLICY: /config/aniimo.decompilation.yaml
+      MODKIT_HANDOFF_SLOT: "${ANIIMO_HANDOFF_SLOT:-aniimo-default}"
     volumes:
       - type: bind
         source: ./profiles/aniimo.yaml
@@ -96,6 +101,11 @@ services:
         source: modkit-inputs
         target: /inputs
         read_only: true
+      # Operational only: claim the exact immutable snapshot published by this
+      # capture run. A distinct slot is required for concurrent orchestrations.
+      - type: volume
+        source: modkit-handoff
+        target: /handoff
       - type: volume
         source: modkit-state
         target: /state
@@ -134,3 +144,5 @@ volumes:
     name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}cache"
   modkit-work:
     name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}work"
+  modkit-handoff:
+    name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}handoff"

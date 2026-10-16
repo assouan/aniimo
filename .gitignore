@@ -14,6 +14,7 @@ profiles/aniimo.runtime.yaml
 /ghidra-state/
 /cache/
 /work/
+/handoff/
 /output/
 /dist/
 

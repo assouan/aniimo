@@ -31,6 +31,7 @@ class RepositoryContractTests(unittest.TestCase):
             "/ghidra-state",
             "/cache",
             "/work",
+            "/handoff",
             "/output",
             "/dist",
         }:
@@ -43,6 +44,7 @@ class RepositoryContractTests(unittest.TestCase):
             "/state/",
             "/inputs/",
             "/artifacts/",
+            "/handoff/",
             "/output/",
             "/dist/",
         ):
@@ -52,6 +54,7 @@ class RepositoryContractTests(unittest.TestCase):
             "state/probe",
             "inputs/probe",
             "artifacts/probe",
+            "handoff/probe",
             "output/probe",
             "dist/probe",
         ):
@@ -70,8 +73,16 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_compose_separates_capture_from_analysis_and_prefixes_volumes(self) -> None:
         compose = read_text("examples/compose.example.yaml")
-        self.assertEqual(compose.count("${ANIIMO_VOLUME_PREFIX:-aniimo-}"), 6)
-        for suffix in ("inputs", "state", "artifacts", "ghidra", "cache", "work"):
+        self.assertEqual(compose.count("${ANIIMO_VOLUME_PREFIX:-aniimo-}"), 7)
+        for suffix in (
+            "inputs",
+            "handoff",
+            "state",
+            "artifacts",
+            "ghidra",
+            "cache",
+            "work",
+        ):
             self.assertIn(f"aniimo-}}{suffix}\"", compose)
         capture, analyzer = compose.split("\n  analyzer:", maxsplit=1)
         self.assertIn("${GAME_DIR:", capture)
@@ -80,6 +91,10 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn("${STEAM_APP_MANIFEST:", analyzer)
         self.assertIn("source: modkit-inputs", capture)
         self.assertIn("source: modkit-inputs", analyzer)
+        self.assertIn("source: modkit-handoff", capture)
+        self.assertIn("source: modkit-handoff", analyzer)
+        self.assertIn('MODKIT_HANDOFF_SLOT: "${ANIIMO_HANDOFF_SLOT:-aniimo-default}"', capture)
+        self.assertIn('MODKIT_HANDOFF_SLOT: "${ANIIMO_HANDOFF_SLOT:-aniimo-default}"', analyzer)
         for forbidden in (
             "source: modkit-state",
             "source: modkit-artifacts",
@@ -90,6 +105,8 @@ class RepositoryContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, capture)
         self.assertIn("target: /inputs\n        read_only: true", analyzer)
+        self.assertIn('"--handoff", "required"', analyzer)
+        self.assertNotIn('"--snapshot", "current"', analyzer)
         self.assertIn("dockerfile: docker/capture.Dockerfile", capture)
         self.assertIn("dockerfile: docker/analyzer.Dockerfile", analyzer)
         self.assertIn("condition: service_completed_successfully", analyzer)
@@ -125,6 +142,8 @@ class RepositoryContractTests(unittest.TestCase):
             "external_payload_rules:", maxsplit=1
         )[0]
         self.assertIn("default_action: ignore", inputs)
+        self.assertIn("selection_id: aniimo-static-inputs-v5", inputs)
+        self.assertIn("input_selection_id: aniimo-static-inputs-v5", decompilation)
         self.assertNotIn('path: "**/*"', inputs)
         self.assertIn("path: GameAssembly.dll", inputs)
         self.assertIn("logical_path: distribution/steam/appmanifest.acf", inputs)
@@ -135,6 +154,11 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("stable_read_passes: 1", inputs)
         self.assertIn("unchanged_object_action: reuse_without_copy", inputs)
         self.assertIn("decompress_during_capture: false", inputs)
+        self.assertIn("path: SymbolMap", payloads)
+        self.assertIn("function_map_use_requires_binary_match: true", inputs)
+        self.assertIn("candidate_inventory:", inputs)
+        self.assertIn("retain_file_bodies: false", inputs)
+        self.assertIn("output: additional-input-candidates.json", inputs)
         self.assertNotIn("path: UnityPlayer.dll", payloads)
         for module in (
             "NEP2.dll",
@@ -157,6 +181,31 @@ class RepositoryContractTests(unittest.TestCase):
             profile,
         )
         self.assertIn("execute_enabled_stages_only_when_invalidated: true", profile)
+        self.assertIn("disassembly_before_decompilation: true", profile)
+        self.assertIn(
+            "body_output_states: [c_and_asm, asm_only, disassembly_failed, pending]",
+            profile,
+        )
+        self.assertIn("reuse_unchanged_failure: true", profile)
+        self.assertIn("max_bodies_per_run: 2", profile)
+        self.assertIn("max_wall_time_seconds: 240", profile)
+        self.assertIn("skip_bsim_query_for_exact_identity: true", profile)
+        self.assertIn("reconcile_approved_native_bodies: true", profile)
+        self.assertIn("readable_native_views: required", profile)
+        self.assertTrue((ROOT / "examples/csv/native_bodies.csv").is_file())
+        self.assertTrue((ROOT / "examples/csv/native_prototypes.csv").is_file())
+        self.assertIn(
+            "body_output_status",
+            read_text("examples/csv/native_bodies.csv").splitlines()[0],
+        )
+        self.assertIn(
+            "native_location_id",
+            read_text("examples/csv/native_prototypes.csv").splitlines()[0],
+        )
+        methods_header = read_text("examples/csv/methods.csv").splitlines()[0]
+        self.assertIn("managed_signature", methods_header)
+        self.assertIn("is_static", methods_header)
+        self.assertIn("body_resolution_status", methods_header)
         self.assertIn("default_command: update", profile)
         self.assertIn("cached_doctor_checks:", profile)
         self.assertIn("capture_plan: enabled", profile)
@@ -184,6 +233,12 @@ class RepositoryContractTests(unittest.TestCase):
         profile = read_text("profiles/aniimo.yaml")
         self.assertIn("status: unverified_for_current_installation", profile)
         self.assertIn("source_document: docs/aniimo/HISTORICAL_EVIDENCE.md", profile)
+        self.assertIn(
+            "metadata_magic_interpretation: standard_il2cpp_magic_little_endian",
+            profile,
+        )
+        self.assertIn("metadata_conformance_beyond_magic: unknown", profile)
+        self.assertIn("suspected_protection_requires_evidence: true", profile)
 
     def test_tool_lock_is_explicitly_unresolved(self) -> None:
         lock = json.loads(read_text("tools.lock.json"))

@@ -17,6 +17,7 @@
 /ghidra-state
 /cache
 /work
+/handoff
 /output
 /dist
 profiles/*.local.yaml

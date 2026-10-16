@@ -5,7 +5,7 @@ Ces scénarios forment un catalogue d'exigences ; ils n'ont pas été exécutés
 | ID | Modification / scénario | Résultat attendu |
 |---|---|---|
 | A01 | Première analyse | Inventaire, détection, catalogue, artefacts et rapport cohérents |
-| A02 | Deuxième exécution strictement identique | Aucun appel au décompilateur, mêmes contenus et mêmes dates de modification des sorties existantes ; logs de run permis |
+| A02 | Deuxième exécution strictement identique après une analyse complète | Aucun appel au décompilateur, mêmes contenus et mêmes dates de modification des sorties existantes ; logs de run permis |
 | A03 | Changement du mtime sans changement de contenu | Pas de faux changement de code |
 | A04 | Changement du contenu avec taille et mtime conservés | Détecté en mode strict par le hash du contenu |
 | A05 | Dossier d'installation déplacé | Identités de build/symboles inchangées si les entrées logiques sont identiques |
@@ -24,7 +24,7 @@ Ces scénarios forment un catalogue d'exigences ; ils n'ont pas été exécutés
 | A18 | Signature d'octets donne deux candidats | Aucune installation automatique du hook ; ambiguïté rapportée |
 | A19 | Correspondance fuzzy forte mais prototype contradictoire | Rejet/suspension, jamais une compatibilité automatique |
 | A20 | Fonction native anonyme devient identifiable | Historique préservé après validation de la correspondance |
-| A21 | Décompilateur timeout/crash | Échec local explicite, checkpoint utilisable et couverture honnête |
+| A21 | Décompilateur timeout/crash | ASM déjà publié si les instructions sont disponibles, état `asm_only`, diagnostic/avertissements conservés, autres corps poursuivis |
 | A22 | Arrêt du conteneur en cours d'écriture | `current.json` reste valide ; reprise sans fichier partiel publié |
 | A23 | Deux runs simultanés | Verrou correct ; aucun double écrivain SQLite/Ghidra |
 | A24 | Jeu en cours de mise à jour | Capture refusée ou analyse différée ; ne pas certifier un couple binaire/métadonnées incohérent |
@@ -50,7 +50,7 @@ Ces scénarios forment un catalogue d'exigences ; ils n'ont pas été exécutés
 | A44 | Exécution depuis un clone où `.sample` n'existe pas | `doctor`, fixtures et tests restent fonctionnels ; aucune dépendance cachée au lot historique |
 | A45 | Manifeste Steam stable mais fichier modifié pendant capture | Une seule nouvelle tentative ; si la dérive persiste, capture refusée et aucun mélange d'états |
 | A46 | `GameAssembly.dll` et métadonnées provenant de captures différentes | Couple rejeté comme incohérent, sans catalogue ni fallback approximatif |
-| A47 | En-tête de métadonnées protégé/personnalisé non pris en charge | `unsupported_protected_metadata`, preuve conservée et aucune fausse extraction vide |
+| A47 | Magic standard IL2CPP présent mais parsing impossible | Distinguer version non prise en charge, incohérence, erreur de parsing et protection suspectée ; le magic seul ne prouve pas une protection et aucun faux catalogue vide n'est publié |
 | A48 | Seul le certificat/signature PE change | Nouvelle provenance ; réutilisation uniquement après égalité de tout le contexte de chargement requis, pas de `.text` seule |
 | A49 | Archive Lua active différente de la copie `StreamingAssets` | Deux révisions de composant distinctes, priorité/runtime documentés, diff ciblé |
 | A50 | Asset sans dépendance d'une capacité modifié | Nouveau `build_id`; aucune capacité déclarée retestée, transfert seulement selon règle explicite et base identique |
@@ -67,8 +67,8 @@ Ces scénarios forment un catalogue d'exigences ; ils n'ont pas été exécutés
 | A61 | Fichier volumineux absent de `aniimo.inputs.yaml` | Corps non copié ; aucune lecture implicite par l'analyseur |
 | A62 | Module découvert par une règle d'inventaire | Métadonnées bornées seulement ; état `needs_review`, pas de corps dans le volume |
 | A63 | Deux captures avec un payload de SHA-256 identique | Objet d'entrée réutilisé, zéro recopie et nouveau snapshot seulement si le manifeste logique change |
-| A64 | `current.json` absent, partiel ou publié avant ses objets | `analyzer` refuse de démarrer l'analyse ; aucune lecture de Steam en fallback |
-| A65 | `ANIIMO_VOLUME_PREFIX=aniimo-` | Volumes `aniimo-inputs`, `aniimo-state`, `aniimo-artifacts`, `aniimo-ghidra`, `aniimo-cache`, `aniimo-work` exactement |
+| A64 | Remise absente/partielle, digest faux ou snapshot incomplet | `analyzer --handoff required` refuse l'analyse ; aucune utilisation de `current` ou de Steam en fallback |
+| A65 | `ANIIMO_VOLUME_PREFIX=aniimo-` | Volumes `aniimo-inputs`, `aniimo-handoff`, `aniimo-state`, `aniimo-artifacts`, `aniimo-ghidra`, `aniimo-cache`, `aniimo-work` exactement |
 | A66 | Exécution standard sans option de feature | `core`, `lua`, `content_indexes` et `anti_cheat` capturés ; Ghidra et BSim planifiés sur les seuls cache misses autorisés |
 | A67 | Run réussi, partiellement caché ou en échec | Rapport hiérarchique JSON/Markdown/CSV avec chaque étape et sous-étape, durée monotone, statut, cache, volumes, outils et erreur éventuelle |
 | A68 | Deux runs avec mêmes images, lock et profil | Préflight rapide rejoué ; contrôles doctor stables servis par le cache, sans smoke test d'outil répété |
@@ -76,6 +76,16 @@ Ces scénarios forment un catalogue d'exigences ; ils n'ont pas été exécutés
 | A70 | Exécution standard avec les quatre composants anti-cheat connus présents | `NEP2.dll`, `NEPKernel.sys`, `NEPCleaner.exe` et `KernelDumpAnalyzer.exe` copiés/hachés une fois et planifiés pour décompilation/documentation complète ; PDB correspondants utilisés s'ils sont présents et valides |
 | A71 | Deuxième exécution avec composants anti-cheat inchangés | Aucun nouvel appel Ghidra/décompilateur/BSim pour ces modules ; artefacts et documentation réutilisés |
 | A72 | Un seul composant anti-cheat change | Nouvelle révision et analyse complète du module concerné ; invalidation limitée à ses sorties et consommateurs déclarés |
+| A73 | Trois corps approuvés dont un partagé par deux méthodes | Trois artefacts canoniques par corps, quatre entrées lisibles, aucune duplication du corps partagé et liens C/ASM/références corrects |
+| A74 | C valide, C en timeout, limites d'un troisième corps inconnues | États exclusifs `c_and_asm`, `asm_only`, `disassembly_failed` ou `pending` selon les preuves ; aucun C vide compté comme succès |
+| A75 | Deuxième run strictement identique après un timeout C | Tentative `asm_only` servie par le cache, aucun nouvel appel coûteux pour ce corps ; d'autres corps encore `pending` peuvent progresser |
+| A76 | Même méthode logique, corps entièrement remplacé | `symbol_id` conservé si l'identité métadonnée reste établie, nouvelle observation de corps/localisation et `body_changed` |
+| A77 | Méthode attendue sans corps résolu | Méthode présente dans la couverture avec `body_resolution_status=unresolved`, distincte des états de décompilation |
+| A78 | Rapport de couverture d'une petite fixture | Égalité exacte corps approuvés = `c_and_asm` + `asm_only` + `disassembly_failed` + `pending`; zones et cibles inconnues listées séparément |
+| A79 | Deux captures entrelacées sur des slots distincts | Chaque analyse revendique et consomme son `snapshot_id` exact, indépendamment de la valeur de `current` |
+| A80 | Deux captures utilisent simultanément le même slot | La seconde échoue sans écraser la remise en attente |
+| A81 | `SymbolMap` présent mais ne correspondant pas au module | Fichier conservé comme preuve, aucune adresse/longueur importée dans le catalogue courant |
+| A82 | Manifestes ou imports référencent un nouveau module hors allowlist | Chemin dans `additional-input-candidates.json`, zone inspectée documentée, aucun corps copié/haché/décompilé implicitement |
 
 ## Rapport d'acceptation
 

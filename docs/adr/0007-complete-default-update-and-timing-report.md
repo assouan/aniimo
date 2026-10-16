@@ -3,6 +3,7 @@
 - Statut : accepted
 - Date : 2026-10-16
 - Amende : ADR 0006
+- Amendé par : ADR 0008 et ADR 0009
 
 ## Contexte
 

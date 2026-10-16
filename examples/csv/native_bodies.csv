@@ -1,0 +1,1 @@
+schema_version,build_id,component_revision_id,analysis_id,native_body_id,module_id,discovery_source,range_start_rva,range_end_rva,instruction_bytes_hash,scope_classification,body_output_status,c_artifact_id,asm_artifact_id,diagnostic_code,warning_count,attempt_id,evidence_id

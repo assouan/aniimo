@@ -1,6 +1,6 @@
 # ADR 0005 — Frontière capture/analyse et volume d'entrées
 
-- Statut : accepted, amendé par ADR 0006
+- Statut : accepted, amendé par ADR 0006, ADR 0007 et ADR 0009
 - Date : 2026-10-16
 
 ## Contexte
@@ -16,11 +16,11 @@ Deux images et services sont séparés :
 - `capture`, minimal, monte l'installation et le manifeste Steam en lecture seule ;
 - `analyzer`, lourd, ne monte jamais Steam et reçoit le volume `inputs` en lecture seule.
 
-`profiles/aniimo.inputs.yaml` est une allowlist bornée. Seuls ses `payload_rules` entrent dans le CAS `/inputs/objects/sha256`. Les règles d'inventaire ne copient aucun corps. ADR 0006 supprime le hash intégral par défaut des composants exclus et rend Lua et les index de contenu optionnels.
+`profiles/aniimo.inputs.yaml` est une allowlist bornée. Seuls ses `payload_rules` entrent dans le CAS `/inputs/objects/sha256`. Les règles d'inventaire ne copient aucun corps. ADR 0006 supprime le hash intégral par défaut des composants exclus ; ADR 0007 active Lua et les index de contenu dans le workflow standard tout en conservant cette lecture bornée.
 
 La politique `profiles/aniimo.decompilation.yaml` est indépendante. Un fichier capturé reste `needs_review` tant que les preuves M0 ne l'ont pas classé. `GameAssembly.dll` demeure un conteneur mixte.
 
-Six volumes persistants utilisent le préfixe littéral : `aniimo-inputs`, `aniimo-state`, `aniimo-artifacts`, `aniimo-ghidra`, `aniimo-cache` et `aniimo-work`.
+Sept volumes persistants utilisent le préfixe littéral : `aniimo-inputs`, `aniimo-handoff`, `aniimo-state`, `aniimo-artifacts`, `aniimo-ghidra`, `aniimo-cache` et `aniimo-work`. ADR 0009 définit la remise exacte entre les deux conteneurs.
 
 ## Conséquences
 

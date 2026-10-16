@@ -15,7 +15,7 @@ Ces éléments proviennent du lot local `.sample` observé le 16 octobre 2026. I
 | Backend | IL2CPP | à redétecter |
 | Bridge Lua | xLua | à redétecter |
 | Assembly principale pressentie | `FunPlus.WorldX.Scripts.dll` | candidat de propriété |
-| Métadonnées | en-tête `AF 1B B1 FA` | format actuel inconnu |
+| Métadonnées | magic standard IL2CPP `AF 1B B1 FA` (`0xFAB11BAF` little-endian) | conformité du reste du format actuel inconnue |
 | Anti-cheat | NEP observé | cible complète explicitement autorisée ; présence et composition actuelles à confirmer |
 
 Le lot ancien a exporté 511 310 fonctions pseudo-C sur 22 composants, dont de nombreuses bibliothèques tierces et composants NEP. Cette couverture volumique globale n'est pas un objectif du nouveau pipeline. La sélection porte sur les cibles approuvées après classification ; contrairement aux dépendances tierces génériques, les composants anti-cheat connus sont intégralement dans le périmètre autorisé.
@@ -35,3 +35,5 @@ L'ancien lot a aussi observé deux hashes complets de `GameAssembly.dll`, avec �
 - Manifestes/version de contenu et `appmanifest_4126040.acf`.
 
 Chaque résultat M0 indiquera s'il confirme, contredit ou laisse inconnue l'observation historique correspondante.
+
+Le magic seul ne prouve ni un format personnalisé, ni une protection. M0 doit distinguer une version non prise en charge, des métadonnées incohérentes, une erreur de parsing et une protection suspectée, cette dernière qualification exigeant des preuves supplémentaires. [S31]
