@@ -1,0 +1,87 @@
+# This profile is an implementation example, not a detected game configuration.
+schema_version: 1
+game:
+  id: target-game
+  input_root: /input/game
+  backend: auto
+  platform: auto
+  architecture: auto
+  unity_version: auto
+
+capture:
+  require_completed_installation: true
+  immutable_snapshot: true
+  hash_algorithm: sha256
+  trust_mtime_cache: false
+  reject_inputs_changed_during_capture: true
+
+inventory:
+  include: ["**/*"]
+  exclude:
+    - "**/Logs/**"
+    - "**/logs/**"
+    - "**/Saves/**"
+    - "**/saves/**"
+    - "**/BepInEx/cache/**"
+    - "**/BepInEx/interop/**"
+    - "**/BepInEx/plugins/**"
+    - "**/BepInEx/LogOutput.log"
+
+scope:
+  mode: game_code_only
+  unknown_ownership: needs_review
+  classifications:
+    game_decompile: ["Assembly-CSharp", "Assembly-CSharp-firstpass"]
+    reference_only: ["UnityEngine.*", "Unity.*", "System.*", "mscorlib", "netstandard"]
+    excluded: ["UnityPlayer.dll", "UnityCrashHandler*.exe"]
+  game_assembly_allowlist: []
+  native_game_module_allowlist: []
+  external_signatures: referenced_only
+  external_implementations: false
+  il2cpp_module_policy: mixed_select_by_original_managed_assembly
+  review_unknown_bodies: true
+  permit_explicit_exceptions: true
+
+analysis:
+  metadata_scope: all_game_metadata
+  native_decompile_scope: game_and_integration
+  include_engine_implementations: false
+  include_third_party_implementations: false
+  native_export_granularity: body
+  managed_export_granularity: type
+  per_function_timeout_seconds: 120
+  module_workers: 1
+  preserve_raw_evidence: true
+  fuzzy_matching: review_only
+  bsim: optional
+
+lua:
+  enabled: true
+  dialect: auto
+  bridge: auto
+  parse_sources: true
+  inspect_bindings: true
+  execute_extracted_code: false
+  runtime_probe: separate_authorized_process
+  require_matching_build_for_observations: true
+  infer_absence_as_removal: false
+
+outputs:
+  root: /output
+  csv: true
+  normalized_json: true
+  pseudocode: true
+  assembly_listing: true
+  lua_definitions: true
+  documentation: true
+  overwrite_only_if_content_changed: true
+
+state:
+  root: /state
+  single_writer: true
+  atomic_publication: true
+
+runtime_policy:
+  unknown_build: disable_affected_capabilities
+  ambiguous_resolution: disable_affected_capabilities
+  automatic_hook_approval: false

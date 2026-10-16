@@ -1,0 +1,42 @@
+# Contract example: implement the Dockerfile and modkit CLI before using it.
+# Copy this file to the repository root, then adjust paths and limits.
+services:
+  analyzer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    entrypoint: ["modkit"]
+    command: ["update", "--config", "/config/game.yaml"]
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    read_only: true
+    network_mode: none
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      HOME: /state/home
+      XDG_CACHE_HOME: /state/cache
+      DOTNET_CLI_HOME: /state/dotnet
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      PYTHONPYCACHEPREFIX: /state/pycache
+      MODKIT_CONFIG: /config/game.yaml
+    volumes:
+      - type: bind
+        source: "${GAME_DIR:?Set GAME_DIR to a complete game installation}"
+        target: /input/game
+        read_only: true
+      - type: bind
+        source: ./profiles/game.yaml
+        target: /config/game.yaml
+        read_only: true
+      - type: bind
+        source: ./state
+        target: /state
+      - type: bind
+        source: ./output
+        target: /output
+    tmpfs:
+      - /tmp:rw,nosuid,size=1g
+    cpus: 4
+    mem_limit: 8g
+    pids_limit: 512
+    init: true
