@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aniimo.invalid/schemas/native-body-v1.schema.json",
+  "title": "Aniimo canonical native body",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["artifacts", "body_output_status", "build_id", "diagnostic", "location", "native_body_id", "native_prototype", "raw_body_hash", "references", "schema_version", "symbols"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "native_body_id": {"type": "string", "pattern": "^body-[0-9a-f-]{36}$"},
+    "build_id": {"type": "string", "pattern": "^build-[0-9a-f]{64}$"},
+    "body_output_status": {"enum": ["c_and_asm", "asm_only", "disassembly_failed", "pending"]},
+    "raw_body_hash": {"type": ["string", "null"]},
+    "diagnostic": {"type": ["string", "null"]},
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asm_sha256", "c_sha256"],
+      "properties": {
+        "asm_sha256": {"type": ["string", "null"]},
+        "c_sha256": {"type": ["string", "null"]}
+      }
+    },
+    "location": {"type": "object", "required": ["architecture", "file_offset", "format", "module", "module_sha256", "preferred_va", "rva"]},
+    "native_prototype": {"type": ["object", "null"]},
+    "references": {"type": "array"},
+    "symbols": {"type": "array", "minItems": 1}
+  }
+}

@@ -1,8 +1,9 @@
-# Contract example: implement both Dockerfiles and the modkit CLI before use.
-# Copy this file to the repository root, or pass `--project-directory .` when
-# validating it in place. Copy .env.example to .env before an implemented run.
+# Configuration example for the implemented M1 capture/analyzer boundary.
+# The repository root already contains the executable compose.yaml. Copy
+# .env.example to .env before a real run.
 services:
   capture:
+    platform: linux/amd64
     build:
       context: .
       dockerfile: docker/capture.Dockerfile
@@ -21,6 +22,7 @@ services:
       PYTHONDONTWRITEBYTECODE: "1"
       TMPDIR: /tmp
       MODKIT_CONFIG: /config/aniimo.yaml
+      MODKIT_IMAGE_DIGEST: "${CAPTURE_IMAGE_DIGEST:-unresolved}"
       MODKIT_INPUT_SELECTION: /config/aniimo.inputs.yaml
       MODKIT_HANDOFF_SLOT: "${ANIIMO_HANDOFF_SLOT:-aniimo-default}"
     volumes:
@@ -41,6 +43,10 @@ services:
         source: ./profiles/aniimo.inputs.yaml
         target: /config/aniimo.inputs.yaml
         read_only: true
+      - type: bind
+        source: ./tools.lock.json
+        target: /opt/modkit/tools.lock.json
+        read_only: true
       - type: volume
         source: modkit-inputs
         target: /inputs
@@ -55,6 +61,7 @@ services:
     init: true
 
   analyzer:
+    platform: linux/amd64
     depends_on:
       capture:
         condition: service_completed_successfully
@@ -82,6 +89,7 @@ services:
       MODKIT_CONFIG: /config/aniimo.yaml
       MODKIT_INPUT_SELECTION: /config/aniimo.inputs.yaml
       MODKIT_DECOMPILATION_POLICY: /config/aniimo.decompilation.yaml
+      MODKIT_IMAGE_DIGEST: "${ANALYZER_IMAGE_DIGEST:-unresolved}"
       MODKIT_HANDOFF_SLOT: "${ANIIMO_HANDOFF_SLOT:-aniimo-default}"
     volumes:
       - type: bind
@@ -95,6 +103,10 @@ services:
       - type: bind
         source: ./profiles/aniimo.inputs.yaml
         target: /config/aniimo.inputs.yaml
+        read_only: true
+      - type: bind
+        source: ./tools.lock.json
+        target: /opt/modkit/tools.lock.json
         read_only: true
       # The analyzer cannot see Steam and cannot mutate captured inputs.
       - type: volume

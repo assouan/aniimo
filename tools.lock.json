@@ -1,10 +1,138 @@
 {
   "schema_version": 1,
   "lock_status": "unresolved",
-  "validated_at": null,
+  "validated_at": "2026-10-17T02:37:51.3361509Z",
   "image_digests": {
-    "capture": null,
-    "analyzer": null
+    "capture": "sha256:24dd76a551e6dc6b3550f31b30989dcc59ca41f29d39a37e0a74594f6217d9e9",
+    "analyzer": "sha256:3d517279c44fbc3c349c6c37ce4995923851fc56e5d9c02a015db8c9b3e77a65"
   },
-  "tools": []
+  "sbom_digests": {
+    "capture_spdx": "sha256:0606c564a8084fc97d5dd341fa6894ba82c1d978769fe11f73a5340a44e9ec31",
+    "analyzer_spdx": "sha256:a3ccb9afa9b2d39ae741e685fa474e2088a48c6b0c0f870eb24b8f4547152518"
+  },
+  "base_images": [
+    {
+      "name": "python",
+      "reference": "python:3.12.8-slim-bookworm",
+      "manifest_digest": "sha256:8859bd6ca943079262c27e38b7119cdacede77c463139a15651dd340087a6cc9",
+      "platform": "linux/amd64",
+      "status": "registry_manifest_resolved"
+    },
+    {
+      "name": "dotnet-sdk",
+      "reference": "mcr.microsoft.com/dotnet/sdk:8.0.408-bookworm-slim",
+      "manifest_digest": "sha256:8ab06772f296ed5f541350334f15d9e2ce84ad4b3ce70c90f2e43db2752c30f6",
+      "platform_digest": "sha256:f02ec8dea350dd13da18c4e4705a603221b4089a5c5d36c31bac335e3b5fa837",
+      "platform": "linux/amd64",
+      "status": "registry_manifest_and_offline_sdk_build_validated"
+    }
+  ],
+  "tools": [
+    {
+      "name": "PyYAML",
+      "version": "6.0.2",
+      "artifact": "PyYAML-6.0.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "sha256": "80bab7bfc629882493af4aa31a4cfa43a4c57c83813253626916b8c7ada83476",
+      "status": "validated_in_capture_and_analyzer_images"
+    },
+    {
+      "name": "Microsoft Build of OpenJDK",
+      "version": "25.0.4+7-LTS",
+      "source_url": "https://download.visualstudio.microsoft.com/download/pr/f0946540-b19e-4bab-8e58-a9d7735a713c/ad34fb62c40d6eee95addb0ee8c3243e/microsoft-jdk-25.0.4-linux-x64.tar.gz",
+      "sha256": "75894d107e474ffb6c947ab050e3893e0a1d3d40d36f107d42936ac6088769c1",
+      "executable": "java",
+      "probe_args": ["-version"],
+      "probe_exit_codes": [0],
+      "version_pattern": "25.0.4",
+      "required_for": "analyzer",
+      "status": "checksum_and_image_smoke_validated"
+    },
+    {
+      "name": "Ghidra",
+      "version": "12.1.4 PUBLIC",
+      "source_url": "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.4_build/ghidra_12.1.4_PUBLIC_20260921.zip",
+      "sha256": "ddac49f903da9d5bac833e5cc79395098b9c33cfd3279be5f31bd00387d2d4db",
+      "executable": "analyzeHeadless",
+      "probe_args": [],
+      "probe_exit_codes": [1],
+      "version_pattern": "Headless Analyzer Usage",
+      "required_for": "analyzer",
+      "status": "checksum_image_smoke_and_m2_real_analysis_validated"
+    },
+    {
+      "name": "Ghidra BSim",
+      "version": "12.1.4 PUBLIC",
+      "provided_by": "Ghidra",
+      "executable": "bsim",
+      "probe_args": [],
+      "probe_exit_codes": [0],
+      "version_pattern": "USAGE: bsim",
+      "required_for": "analyzer",
+      "status": "image_smoke_and_m2_signature_generation_validated"
+    },
+    {
+      "name": "BepInEx.Unity.IL2CPP",
+      "version": "6.0.0-pre.2",
+      "source_url": "https://github.com/BepInEx/BepInEx/releases/download/v6.0.0-pre.2/BepInEx-Unity.IL2CPP-win-x64-6.0.0-pre.2.zip",
+      "artifact": "BepInEx-Unity.IL2CPP-win-x64-6.0.0-pre.2.zip",
+      "sha256": "616ec7eb06cf11b2a0000e8fcef04d1b12bb58e84a2e0bdac9523234fc193ceb",
+      "required_for": "authorized_windows_runtime_only",
+      "status": "official_archive_inspected_not_installed_runtime_not_tested"
+    }
+  ],
+  "milestone_evidence": {
+    "m2": {
+      "analysis_key": "m2-1da93dfb99e195f8f9a34fedd558dd8b3d6d868ea7f67c196d5167ab3de2e03e",
+      "approved_body_count": 53339,
+      "cache_validation_run": "run-m2-real-k",
+      "metadata_status": "suspected_protection",
+      "snapshot_id": "snapshot-58a1510492a6987eb006e0ff901702f35bec414a416e184558ccdb1a4ca12adf"
+    },
+    "m3": {
+      "comparison_key": "m3-3cb49fc51b95641ae7fbe130b597f818a02d9ebfa9b2ce0e056514bf1cd9f479",
+      "source_build_id": "build-f6a55533606d4b70ad7983f6307b9d8a3e5d70524033ab3d7d85b7fdafd7d41f",
+      "destination_build_id": "build-6153068c4ea08c06123406e0873b667f6db5b02bb3d17aa71833d565ec3838ec",
+      "match_count": 53847,
+      "confirmed_count": 7549,
+      "candidate_count": 45291,
+      "cache_validation_run": "run-m3-real-b"
+    },
+    "m4": {
+      "analysis_key": "m4-8a93addbb70efc6c58a6847473884092e10337f5fe957568fd8dec0f9dbb67ec",
+      "snapshot_id": "snapshot-58a1510492a6987eb006e0ff901702f35bec414a416e184558ccdb1a4ca12adf",
+      "unique_script_count": 8636,
+      "lua_symbol_observation_count": 213836,
+      "binding_count": 10106,
+      "runtime_probe_status": "not_tested",
+      "cache_validation_run": "run-m4-real-current-b"
+    },
+    "m5": {
+      "release_key": "m5-043c79de2e89c19b802c12b7444600685050ab85cb3496a6692468f6993ef9c1",
+      "sdk_version": "1.0.0",
+      "capability_basis_id": "capability-basis:824c7634cfe094dae88791a9062ccbc32a66d5a0b2abdc470c89b32239b3a7e0",
+      "package_sha256": "1e721d7b9952003d6f3ce1a60cee63525bb1f2b688a58f0ce41889e51a215454",
+      "offline_validation_status": "passed",
+      "runtime_validation_status": "not_tested",
+      "runtime_authorization_status": "not_requested",
+      "cache_validation_run": "run-m5-real-generate-b"
+    },
+    "m6": {
+      "release_key": "m6-4e839d37fa81325caa82e44d37a6907e159e286395988873ac6a5482cd5a719a",
+      "sdk_version": "1.1.0",
+      "api_ids": [
+        "aniimo.lua-module-catalog",
+        "aniimo.build-identity"
+      ],
+      "capability_basis_count": 3,
+      "old_plugin_sha256": "d623064583c6aba9b77b0ac77eea487039454b3a7f4cc46de9687534c1af3340",
+      "package_sha256": "a70e211abbf315379bff1bea40180b3c57f38d72b9178a126348049e0e8002bf",
+      "binary_compatibility_status": "passed",
+      "distribution_verification_status": "passed",
+      "native_optimization_status": "not_needed",
+      "runtime_validation_status": "not_tested",
+      "runtime_authorization_status": "not_requested",
+      "signature_status": "unsigned",
+      "cache_validation_run": "run-m6-real-generate-c"
+    }
+  }
 }

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aniimo.invalid/schemas/sdk-test-report-v1.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "build_ids": {
+      "items": {"type": "string", "pattern": "^build-[0-9a-f]{64}$"},
+      "minItems": 2,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "plugin_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "results": {"items": {"type": "object"}, "minItems": 2, "type": "array"},
+    "runtime_game_status": {"const": "not_tested"},
+    "same_plugin_binary": {"const": true},
+    "schema_version": {"const": 1},
+    "status": {"const": "passed"}
+  },
+  "required": [
+    "build_ids",
+    "plugin_sha256",
+    "results",
+    "runtime_game_status",
+    "same_plugin_binary",
+    "schema_version",
+    "status"
+  ],
+  "title": "Aniimo SDK two-build offline test report v1",
+  "type": "object"
+}

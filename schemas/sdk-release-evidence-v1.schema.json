@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aniimo.invalid/schemas/sdk-release-evidence-v1.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "api_id": {"const": "aniimo.lua-module-catalog"},
+    "authorization": {
+      "properties": {
+        "runtime_authorization_id": {"type": "string"},
+        "status": {"const": "not_requested"}
+      },
+      "required": ["runtime_authorization_id", "status"],
+      "type": "object"
+    },
+    "build_ids": {"items": {"type": "string"}, "minItems": 2, "type": "array"},
+    "contract_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "offline_validation_status": {"const": "passed"},
+    "package_file_count": {"type": "integer", "minimum": 1},
+    "package_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "package_size_bytes": {"type": "integer", "minimum": 1},
+    "release_id": {"type": "string"},
+    "runtime_validation_status": {"const": "not_tested"},
+    "schema_version": {"const": 1},
+    "sdk_version": {"type": "string"},
+    "test_report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "required": [
+    "api_id",
+    "authorization",
+    "build_ids",
+    "contract_sha256",
+    "offline_validation_status",
+    "package_file_count",
+    "package_sha256",
+    "package_size_bytes",
+    "release_id",
+    "runtime_validation_status",
+    "schema_version",
+    "sdk_version",
+    "test_report_sha256"
+  ],
+  "title": "Aniimo SDK release evidence v1",
+  "type": "object"
+}

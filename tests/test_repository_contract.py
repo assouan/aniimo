@@ -5,7 +5,6 @@ import subprocess
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -20,7 +19,7 @@ class RepositoryContractTests(unittest.TestCase):
             for line in read_text(".dockerignore").splitlines()
             if line.strip() and not line.lstrip().startswith("#")
         }
-        for required in {
+        for required in (
             ".git",
             ".sample",
             ".ainotes",
@@ -34,7 +33,7 @@ class RepositoryContractTests(unittest.TestCase):
             "/handoff",
             "/output",
             "/dist",
-        }:
+        ):
             self.assertIn(required, patterns)
 
     def test_generated_state_is_git_ignored(self) -> None:
@@ -83,7 +82,7 @@ class RepositoryContractTests(unittest.TestCase):
             "cache",
             "work",
         ):
-            self.assertIn(f"aniimo-}}{suffix}\"", compose)
+            self.assertIn(f'aniimo-}}{suffix}"', compose)
         capture, analyzer = compose.split("\n  analyzer:", maxsplit=1)
         self.assertIn("${GAME_DIR:", capture)
         self.assertIn("${STEAM_APP_MANIFEST:", capture)
@@ -93,8 +92,12 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("source: modkit-inputs", analyzer)
         self.assertIn("source: modkit-handoff", capture)
         self.assertIn("source: modkit-handoff", analyzer)
-        self.assertIn('MODKIT_HANDOFF_SLOT: "${ANIIMO_HANDOFF_SLOT:-aniimo-default}"', capture)
-        self.assertIn('MODKIT_HANDOFF_SLOT: "${ANIIMO_HANDOFF_SLOT:-aniimo-default}"', analyzer)
+        self.assertIn(
+            'MODKIT_HANDOFF_SLOT: "${ANIIMO_HANDOFF_SLOT:-aniimo-default}"', capture
+        )
+        self.assertIn(
+            'MODKIT_HANDOFF_SLOT: "${ANIIMO_HANDOFF_SLOT:-aniimo-default}"', analyzer
+        )
         for forbidden in (
             "source: modkit-state",
             "source: modkit-artifacts",
@@ -105,6 +108,12 @@ class RepositoryContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, capture)
         self.assertIn("target: /inputs\n        read_only: true", analyzer)
+        self.assertEqual(
+            compose.count(
+                "target: /opt/modkit/tools.lock.json\n        read_only: true"
+            ),
+            2,
+        )
         self.assertIn('"--handoff", "required"', analyzer)
         self.assertNotIn('"--snapshot", "current"', analyzer)
         self.assertIn("dockerfile: docker/capture.Dockerfile", capture)
@@ -117,6 +126,66 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn('MODKIT_GID: "${LOCAL_GID:-1000}"', compose)
         self.assertIn("XDG_CACHE_HOME: /cache/xdg", compose)
         self.assertIn("TMPDIR: /work/tmp", compose)
+
+    def test_m1_runtime_files_exist_and_root_compose_keeps_the_boundary(self) -> None:
+        for path in (
+            "compose.yaml",
+            "docker/capture.Dockerfile",
+            "docker/analyzer.Dockerfile",
+            "docker/modkit-entrypoint",
+            "requirements.lock",
+            "migrations/0001_capture.sql",
+            "migrations/0002_pipeline_scope.sql",
+            "schemas/capture-manifest-v2.schema.json",
+            "schemas/handoff-v1.schema.json",
+            "schemas/analysis-plan-v1.schema.json",
+            "schemas/run-report-v1.schema.json",
+        ):
+            self.assertTrue((ROOT / path).is_file(), path)
+        compose = read_text("compose.yaml")
+        capture, analyzer = compose.split("\n  analyzer:", maxsplit=1)
+        self.assertIn("${GAME_DIR:", capture)
+        self.assertIn("${STEAM_APP_MANIFEST:", capture)
+        self.assertNotIn("${GAME_DIR:", analyzer)
+        self.assertNotIn("${STEAM_APP_MANIFEST:", analyzer)
+        self.assertIn("target: /inputs\n        read_only: true", analyzer)
+        self.assertEqual(compose.count("${ANIIMO_VOLUME_PREFIX:-aniimo-}"), 7)
+
+    def test_m1_dockerfiles_pin_downloaded_inputs(self) -> None:
+        capture = read_text("docker/capture.Dockerfile")
+        analyzer = read_text("docker/analyzer.Dockerfile")
+        base_digest = (
+            "sha256:8859bd6ca943079262c27e38b7119cdacede77c463139a15651dd340087a6cc9"
+        )
+        self.assertIn(base_digest, capture)
+        self.assertIn(base_digest, analyzer)
+        self.assertIn("--require-hashes", capture)
+        self.assertNotIn("COPY tools.lock.json", capture)
+        self.assertNotIn("COPY tools.lock.json", analyzer)
+        self.assertIn("MICROSOFT_JDK_SHA256=", analyzer)
+        self.assertIn("GHIDRA_SHA256=", analyzer)
+        self.assertIn("import shutil", analyzer)
+        self.assertIn("roots = set()", analyzer)
+        self.assertIn("pathlib.PurePosixPath(member.name).parts", analyzer)
+        self.assertNotIn('prefix = members[0].name.split("/", 1)[0]', analyzer)
+        self.assertIn("/opt/ghidra/support/launch.sh", analyzer)
+        self.assertIn("USER ${MODKIT_UID}:${MODKIT_GID}", capture)
+        self.assertIn("USER ${MODKIT_UID}:${MODKIT_GID}", analyzer)
+        for name in (
+            "capture-manifest-v2.schema.json",
+            "handoff-v1.schema.json",
+            "analysis-plan-v1.schema.json",
+            "run-report-v1.schema.json",
+        ):
+            schema = json.loads(read_text(f"schemas/{name}"))
+            self.assertEqual(
+                schema["$schema"], "https://json-schema.org/draft/2020-12/schema"
+            )
+
+    def test_image_build_uses_the_active_docker_context_by_default(self) -> None:
+        script = read_text("scripts/build-images.ps1")
+        self.assertIn("$Builder = (docker context show).Trim()", script)
+        self.assertNotIn('[string]$Builder = "default"', script)
 
     def test_profiles_fail_closed_for_game_decompilation(self) -> None:
         generic = read_text("profiles/decompilation.example.yaml")
@@ -240,11 +309,19 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("metadata_conformance_beyond_magic: unknown", profile)
         self.assertIn("suspected_protection_requires_evidence: true", profile)
 
-    def test_tool_lock_is_explicitly_unresolved(self) -> None:
+    def test_tool_lock_records_validated_images_without_claiming_metadata_support(
+        self,
+    ) -> None:
         lock = json.loads(read_text("tools.lock.json"))
         self.assertEqual(lock["lock_status"], "unresolved")
-        self.assertEqual(lock["tools"], [])
-        self.assertEqual(lock["image_digests"], {"capture": None, "analyzer": None})
+        for digest in lock["image_digests"].values():
+            self.assertRegex(digest, r"^sha256:[0-9a-f]{64}$")
+        for digest in lock["sbom_digests"].values():
+            self.assertRegex(digest, r"^sha256:[0-9a-f]{64}$")
+        self.assertGreaterEqual(len(lock["tools"]), 4)
+        for tool in lock["tools"]:
+            self.assertIn("status", tool)
+            self.assertNotEqual(tool["status"], "fabricated")
 
     def test_next_milestone_is_m0_only(self) -> None:
         prompt = read_text("CODEX_PROMPT.md")

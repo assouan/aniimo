@@ -1,0 +1,154 @@
+services:
+  capture:
+    image: aniimo-capture:m1
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: docker/capture.Dockerfile
+      args:
+        MODKIT_UID: "${LOCAL_UID:-1000}"
+        MODKIT_GID: "${LOCAL_GID:-1000}"
+    command: ["capture", "--config", "/config/aniimo.yaml"]
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    read_only: true
+    network_mode: none
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      HOME: /tmp/home
+      PYTHONDONTWRITEBYTECODE: "1"
+      TMPDIR: /tmp
+      MODKIT_CONFIG: /config/aniimo.yaml
+      MODKIT_IMAGE_DIGEST: "${CAPTURE_IMAGE_DIGEST:-unresolved}"
+      MODKIT_INPUT_SELECTION: /config/aniimo.inputs.yaml
+      MODKIT_HANDOFF_SLOT: "${ANIIMO_HANDOFF_SLOT:-aniimo-default}"
+    volumes:
+      - type: bind
+        source: "${GAME_DIR:?Set GAME_DIR to a complete game installation}"
+        target: /source/game
+        read_only: true
+      - type: bind
+        source: "${STEAM_APP_MANIFEST:?Set STEAM_APP_MANIFEST to appmanifest_4126040.acf}"
+        target: /source/steam/appmanifest.acf
+        read_only: true
+      - type: bind
+        source: ./profiles/aniimo.yaml
+        target: /config/aniimo.yaml
+        read_only: true
+      - type: bind
+        source: ./profiles/aniimo.inputs.yaml
+        target: /config/aniimo.inputs.yaml
+        read_only: true
+      - type: bind
+        source: ./tools.lock.json
+        target: /opt/modkit/tools.lock.json
+        read_only: true
+      - type: volume
+        source: modkit-inputs
+        target: /inputs
+      - type: volume
+        source: modkit-handoff
+        target: /handoff
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=512m
+    cpus: "${CAPTURE_CPUS:-4}"
+    mem_limit: "${CAPTURE_MEMORY_LIMIT:-4g}"
+    pids_limit: 256
+    init: true
+
+  analyzer:
+    image: aniimo-analyzer:m1
+    platform: linux/amd64
+    depends_on:
+      capture:
+        condition: service_completed_successfully
+    build:
+      context: .
+      dockerfile: docker/analyzer.Dockerfile
+      args:
+        MODKIT_UID: "${LOCAL_UID:-1000}"
+        MODKIT_GID: "${LOCAL_GID:-1000}"
+    command: ["analyze", "--config", "/config/aniimo.yaml", "--handoff", "required"]
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    read_only: true
+    network_mode: none
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      HOME: /state/home
+      XDG_CACHE_HOME: /cache/xdg
+      DOTNET_CLI_HOME: /state/dotnet
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      PYTHONPYCACHEPREFIX: /cache/pycache
+      TMPDIR: /work/tmp/analyzer
+      MODKIT_GHIDRA_MAX_HEAP: "${GHIDRA_MAX_HEAP:-24G}"
+      MODKIT_CONFIG: /config/aniimo.yaml
+      MODKIT_INPUT_SELECTION: /config/aniimo.inputs.yaml
+      MODKIT_DECOMPILATION_POLICY: /config/aniimo.decompilation.yaml
+      MODKIT_IMAGE_DIGEST: "${ANALYZER_IMAGE_DIGEST:-unresolved}"
+      MODKIT_HANDOFF_SLOT: "${ANIIMO_HANDOFF_SLOT:-aniimo-default}"
+    volumes:
+      - type: bind
+        source: ./profiles/aniimo.yaml
+        target: /config/aniimo.yaml
+        read_only: true
+      - type: bind
+        source: ./profiles/aniimo.decompilation.yaml
+        target: /config/aniimo.decompilation.yaml
+        read_only: true
+      - type: bind
+        source: ./profiles/aniimo.inputs.yaml
+        target: /config/aniimo.inputs.yaml
+        read_only: true
+      - type: bind
+        source: ./tools.lock.json
+        target: /opt/modkit/tools.lock.json
+        read_only: true
+      - type: volume
+        source: modkit-inputs
+        target: /inputs
+        read_only: true
+      - type: volume
+        source: modkit-handoff
+        target: /handoff
+      - type: volume
+        source: modkit-state
+        target: /state
+      - type: volume
+        source: modkit-artifacts
+        target: /artifacts
+      - type: volume
+        source: modkit-ghidra
+        target: /ghidra-state
+      - type: volume
+        source: modkit-cache
+        target: /cache
+      - type: volume
+        source: modkit-work
+        target: /work
+      - type: bind
+        source: ./output
+        target: /output
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=2g
+    cpus: "${ANALYZER_CPUS:-12}"
+    mem_limit: "${ANALYZER_MEMORY_LIMIT:-32g}"
+    pids_limit: 1024
+    init: true
+
+volumes:
+  modkit-inputs:
+    name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}inputs"
+  modkit-handoff:
+    name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}handoff"
+  modkit-state:
+    name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}state"
+  modkit-artifacts:
+    name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}artifacts"
+  modkit-ghidra:
+    name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}ghidra"
+  modkit-cache:
+    name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}cache"
+  modkit-work:
+    name: "${ANIIMO_VOLUME_PREFIX:-aniimo-}work"
+

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aniimo.invalid/schemas/sdk-capability-manifest-v1.schema.json",
+  "additionalProperties": true,
+  "properties": {
+    "api_id": {"const": "aniimo.lua-module-catalog"},
+    "build_id": {"type": "string", "pattern": "^build-[0-9a-f]{64}$"},
+    "capability_basis_id": {"type": "string", "pattern": "^capability-basis:[0-9a-f]{64}$"},
+    "capability_status": {"enum": ["compatible", "requires_validation", "unavailable", "breaking"]},
+    "catalog_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "external_authorization_status": {"enum": ["not_requested", "pending", "approved", "rejected", "expired", "unknown"]},
+    "modules": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "module_name": {"type": "string", "minLength": 1},
+          "parse_status": {"enum": ["parsed", "unsupported", "parse_error"]},
+          "script_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        },
+        "required": ["module_name", "parse_status", "script_sha256"],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "runtime_validation_status": {"enum": ["passed", "failed", "not_tested"]},
+    "schema_version": {"const": 1},
+    "snapshot_id": {"type": "string", "pattern": "^snapshot-[0-9a-f]{64}$"}
+  },
+  "required": [
+    "api_id",
+    "build_id",
+    "capability_basis_id",
+    "capability_status",
+    "catalog_sha256",
+    "external_authorization_status",
+    "modules",
+    "runtime_validation_status",
+    "schema_version",
+    "snapshot_id"
+  ],
+  "title": "Aniimo SDK capability manifest v1",
+  "type": "object"
+}

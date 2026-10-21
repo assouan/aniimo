@@ -6,9 +6,7 @@ Le dépôt versionné ne contient aucun binaire du jeu, aucun dump global et auc
 
 ## État
 
-Le jalon d’architecture M-1 est terminé. La CLI `modkit`, les deux Dockerfiles et les analyseurs restent à implémenter. Le prochain jalon est exclusivement M0 : diagnostic en lecture seule du build Aniimo courant et validation des outils candidats. Voir `STATUS.md`.
-
-Ne pas regrouper M0 et M1 dans une même livraison : M0 doit d’abord déterminer la branche technique réellement compatible avec les entrées présentes.
+Les jalons M-1 à M6 sont terminés. M1 a validé l’orchestration et les snapshots ; M2 a analysé les quatre modules natifs approuvés et réconcilié 53 339 corps ; M3 a comparé deux builds sans promouvoir les candidats ; M4 a analysé 8 636 scripts Lua uniques ; M5 a livré le premier SDK ; M6 ajoute l’identité de build, prouve la compatibilité d’un ancien mod non recompilé, durcit la distribution et fournit le watcher optionnel. Les validations dans le processus du jeu restent honnêtement `not_tested`. Voir `STATUS.md` et les rapports `docs/aniimo/M0_REPORT.md` à `M6_REPORT.md`.
 
 ## Frontières du système
 
@@ -24,25 +22,30 @@ Le pipeline décompile les implémentations propres au jeu, les intégrations ap
 
 Avec IL2CPP, `GameAssembly.dll` est un conteneur mixte. Les corps sont sélectionnés d’après l’assembly managée d’origine et les preuves de propriété ; le module n’est jamais traité comme un bloc entièrement propriétaire du jeu.
 
-La liste de copie et la liste de décompilation sont volontairement distinctes. `profiles/aniimo.inputs.yaml` contient les payloads autorisés dans `aniimo-inputs`. Le profil Aniimo active déjà `core`, les archives Lua, les index de contenu et `anti_cheat` afin qu'une mise à jour standard soit complète. `profiles/aniimo.decompilation.yaml` préapprouve les quatre composants anti-cheat connus comme modules complets ; M0 produira `scope-plan.json` pour confirmer leur présence, identifier d’éventuels composants supplémentaires et classifier le reste du build courant.
+La liste de copie et la liste de décompilation sont volontairement distinctes. `profiles/aniimo.inputs.yaml` contient les payloads autorisés dans `aniimo-inputs`. Le profil Aniimo active déjà `core`, les archives Lua, les index de contenu et `anti_cheat` afin qu'une mise à jour standard soit complète. `profiles/aniimo.decompilation.yaml` préapprouve les quatre composants anti-cheat connus comme modules complets ; M0 les a confirmés et a classé chaque sujet courant dans son `scope-plan.json` sans lancer de décompilation.
 
-## Aniimo : indices historiques à revérifier
+## Aniimo : indices historiques et résultat M0
 
 Le lot local du 16 octobre 2026 indique, pour le Steam build `25962016`, Windows x64, Unity `2022.3.62f1`, IL2CPP, xLua et les octets de magic `AF 1B B1 FA`. Ce magic est la représentation little-endian de la valeur IL2CPP standard `0xFAB11BAF` ; la conformité du reste des métadonnées reste inconnue. Ces éléments sont consignés dans `docs/aniimo/HISTORICAL_EVIDENCE.md` et dans `profiles/aniimo.yaml` avec le statut `unverified_for_current_installation`.
 
-M0 doit les confirmer indépendamment sur `C:\Program Files (x86)\Steam\steamapps\common\Aniimo`. Aucun résultat historique n’est promu automatiquement en vérité courante.
+M0 les a comparés indépendamment au snapshot courant, sans utiliser `.sample`. La version Unity, le backend IL2CPP, l'architecture x86-64 et xLua sont confirmés ; le build historique est contredit par le build courant `25988361`. Aucun résultat historique n’a été promu automatiquement.
 
 ## Exécution cible
 
-Après implémentation :
-
 ```powershell
 Copy-Item .env.example .env
-Copy-Item examples/compose.example.yaml compose.yaml
 New-Item -ItemType Directory -Force output | Out-Null
-docker compose build capture analyzer
+./scripts/build-images.ps1
 docker compose up --abort-on-container-failure
 ```
+
+La surveillance locale reste une commande explicite du seul service autorisé à lire l’installation :
+
+```powershell
+docker compose run --rm capture watch --interval 300
+```
+
+Elle sérialise les captures, reprend les erreurs transitoires et ne publie une remise que pour un nouveau snapshot. Elle ne lance pas le jeu ni l’analyseur en parallèle.
 
 La commande `up` exécute automatiquement : préflight/`doctor`, plan de capture, capture, plan d'invalidation, extraction nécessaire, ILSpy ou chaîne IL2CPP, Ghidra, BSim, Lua, comparaison, documentation, rapport et publication. Chaque étape consulte d'abord son cache.
 
@@ -64,7 +67,7 @@ Chaque exécution publie sous `output/reports/<run_id>/` un rapport JSON, Markdo
 - `STUDY.md` : revue externe ayant motivé les garanties ASM, couverture, reprise et remise de snapshot.
 - `AGENTS.md` : invariants de développement et de preuve.
 - `STATUS.md` : état réel des jalons et validations exécutées.
-- `CODEX_PROMPT.md` : instruction de démarrage du prochain jalon seulement.
+- `CODEX_PROMPT.md` : contrat initial des jalons ; `STATUS.md` reste l’état d’exécution courant.
 - `specs/DATA_MODEL.md` : registre, identités, preuves et exports.
 - `specs/ACCEPTANCE.md` : scénarios de validation automatisables.
 - `specs/DOCKER_CONTRACT.md` : contrat du conteneur et des volumes.
@@ -72,12 +75,29 @@ Chaque exécution publie sous `output/reports/<run_id>/` un rapport JSON, Markdo
 - `docs/adr/` : décisions architecturales durables.
 - `docs/aniimo/` : preuves historiques résumées sans binaire du jeu.
 - `docs/aniimo/INPUT_PIPELINE.md` : séparation allowlist, capture et décompilation.
+- `docs/aniimo/M0_REPORT.md` : synthèse du diagnostic réel et de la matrice d'outillage, sans chemins hôte.
+- `docs/aniimo/M1_REPORT.md` : validation du pipeline conteneurisé, des snapshots et du cache.
+- `docs/aniimo/M2_REPORT.md` : couverture native réelle, sorties, limites IL2CPP et preuves de cache.
+- `docs/aniimo/M3_REPORT.md` : comparaison réelle de deux builds, invalidations, candidats et documentation incrémentale.
+- `docs/aniimo/M4_REPORT.md` : extraction Lua réelle, dialecte borné, bindings, définitions LuaLS et sonde séparée.
+- `docs/aniimo/M5_REPORT.md` : contrat SDK, adaptateurs exacts, loader évalué, mod exemple et package reproductible.
+- `docs/aniimo/M6_REPORT.md` : extension additive, ancien mod non recompilé, watcher et distribution durcie.
+- `tools/m0_diagnose.py` : utilitaire borné `capture`/`diagnose`/`verify` propre au jalon M0.
+- `tools/audit_m2.py` : audit read-only du registre, de la couverture et des fichiers M2.
+- `tools/audit_m3.py` : audit read-only de la comparaison, du registre multi-build et du cache documentaire.
+- `tools/audit_m4.py` : audit read-only des sorties Lua, du registre, du périmètre xLua et du cache.
+- `tools/audit_m5.py` : audit read-only de la release SDK, des validations, du package et de sa reproductibilité.
+- `tools/audit_m6.py` : audit final de la compatibilité binaire, de l’attestation de distribution et des statuts M6.
 - `profiles/aniimo.yaml` : profil spécifique, sûr par défaut.
 - `profiles/aniimo.inputs.yaml` : liste bornée des fichiers copiables vers le volume d’entrées.
 - `profiles/aniimo.decompilation.yaml` : politique de périmètre ; composants inconnus fermés par défaut et quatre modules anti-cheat préapprouvés intégralement.
 - `profiles/game.example.yaml` : modèle générique.
 - `profiles/input-selection.example.yaml` et `profiles/decompilation.example.yaml` : contrats génériques séparés.
-- `examples/compose.example.yaml` : Compose cible, non exécutable avant M1.
+- `compose.yaml` : orchestration M1 exécutable en une commande avec images validées.
+- `examples/compose.example.yaml` : modèle commenté de la même frontière de services.
+- `modkit/` : CLI de capture, analyse, CAS, remise, registre et rapports.
+- `docker/` : images séparées et entrypoint non privilégié.
+- `migrations/` et `schemas/` : contrats SQLite et JSON versionnés de M1 à M6.
 - `examples/csv/` : en-têtes des vues CSV demandées.
 - `SOURCES.md` : sources primaires utilisées pour la conception.
 

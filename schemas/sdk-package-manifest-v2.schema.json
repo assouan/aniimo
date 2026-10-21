@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aniimo.invalid/schemas/sdk-package-manifest-v2.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "allowed_files": {"items": {"type": "string"}, "minItems": 1, "type": "array", "uniqueItems": true},
+    "api_ids": {"items": {"type": "string"}, "minItems": 2, "type": "array", "uniqueItems": true},
+    "binary_compatibility_required": {"const": true},
+    "build_ids": {"items": {"type": "string"}, "minItems": 2, "type": "array", "uniqueItems": true},
+    "contains_game_binaries": {"const": false},
+    "contains_game_scripts": {"const": false},
+    "contract_assembly_version": {"const": "1.0.0.0"},
+    "files": {"items": {"additionalProperties": false, "properties": {"path": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "size_bytes": {"type": "integer", "minimum": 0}}, "required": ["path", "sha256", "size_bytes"], "type": "object"}, "minItems": 1, "type": "array"},
+    "runtime_validation_status": {"const": "not_tested"},
+    "schema_version": {"const": 2},
+    "sdk_version": {"type": "string"}
+  },
+  "required": ["allowed_files", "api_ids", "binary_compatibility_required", "build_ids", "contains_game_binaries", "contains_game_scripts", "contract_assembly_version", "files", "runtime_validation_status", "schema_version", "sdk_version"],
+  "title": "Aniimo SDK package manifest v2",
+  "type": "object"
+}

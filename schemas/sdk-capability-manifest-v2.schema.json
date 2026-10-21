@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aniimo.invalid/schemas/sdk-capability-manifest-v2.schema.json",
+  "additionalProperties": true,
+  "properties": {
+    "api_id": {"const": "aniimo.lua-module-catalog"},
+    "build_id": {"type": "string", "pattern": "^build-[0-9a-f]{64}$"},
+    "build_identity": {
+      "additionalProperties": true,
+      "properties": {
+        "api_id": {"const": "aniimo.build-identity"},
+        "architecture": {"const": "x86_64"},
+        "backend": {"const": "Unity IL2CPP"},
+        "capability_basis_id": {"type": "string", "pattern": "^capability-basis:[0-9a-f]{64}$"},
+        "capability_status": {"const": "requires_validation"},
+        "runtime_validation_status": {"const": "not_tested"}
+      },
+      "required": ["api_id", "architecture", "backend", "capability_basis_id", "capability_status", "runtime_validation_status"],
+      "type": "object"
+    },
+    "capability_basis_id": {"type": "string", "pattern": "^capability-basis:[0-9a-f]{64}$"},
+    "capability_status": {"const": "requires_validation"},
+    "catalog_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "external_authorization_status": {"const": "not_requested"},
+    "modules": {"items": {"type": "object"}, "minItems": 1, "type": "array"},
+    "runtime_validation_status": {"const": "not_tested"},
+    "schema_version": {"const": 2},
+    "snapshot_id": {"type": "string", "pattern": "^snapshot-[0-9a-f]{64}$"}
+  },
+  "required": ["api_id", "build_id", "build_identity", "capability_basis_id", "capability_status", "catalog_sha256", "external_authorization_status", "modules", "runtime_validation_status", "schema_version", "snapshot_id"],
+  "title": "Aniimo SDK capability manifest v2",
+  "type": "object"
+}

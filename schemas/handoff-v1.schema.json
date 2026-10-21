@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aniimo.local/schemas/handoff-v1.schema.json",
+  "title": "Exact snapshot handoff v1",
+  "type": "object",
+  "required": ["schema_version", "workflow_run_id", "snapshot_id", "snapshot_manifest_sha256", "capture_report"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "workflow_run_id": { "type": "string", "minLength": 1 },
+    "snapshot_id": { "type": "string", "pattern": "^snapshot-[0-9a-f]{64}$" },
+    "snapshot_manifest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "capture_report": { "type": "string", "pattern": "^run-reports/[^/]+\\.json$" }
+  },
+  "additionalProperties": false
+}
+

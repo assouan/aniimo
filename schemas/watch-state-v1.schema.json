@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aniimo.invalid/schemas/watch-state-v1.schema.json",
+  "additionalProperties": true,
+  "properties": {
+    "captures_succeeded": {"type": "integer", "minimum": 0},
+    "dispatches": {"type": "integer", "minimum": 0},
+    "failures": {"type": "integer", "minimum": 0},
+    "handoff_slot": {"type": "string"},
+    "iterations": {"type": "integer", "minimum": 1},
+    "last_dispatched_snapshot_id": {"type": ["string", "null"]},
+    "last_error": {"type": ["object", "null"]},
+    "schema_version": {"const": 1}
+  },
+  "required": ["captures_succeeded", "dispatches", "failures", "handoff_slot", "iterations", "last_dispatched_snapshot_id", "last_error", "schema_version"],
+  "title": "Aniimo local capture watcher state v1",
+  "type": "object"
+}

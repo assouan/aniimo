@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aniimo.local/schemas/analysis-plan-v1.schema.json",
+  "title": "M1 analysis plan v1",
+  "type": "object",
+  "required": ["schema_version", "analysis_key", "basis", "decisions", "stages"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "analysis_key": { "type": "string", "pattern": "^analysis-[0-9a-f]{64}$" },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["subject_id", "decision", "reason", "evidence_refs"],
+        "properties": {
+          "decision": { "enum": ["game_decompile", "reference_only", "excluded", "needs_review"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "stages": { "type": "array" }
+  },
+  "additionalProperties": true
+}
+

@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aniimo.invalid/schemas/lua-runtime-observation-v1.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "bridge": {"type": "string", "minLength": 1},
+    "build_id": {"type": "string", "pattern": "^build-[0-9a-f]{64}$"},
+    "coverage": {
+      "additionalProperties": false,
+      "properties": {
+        "exhaustive": {"const": false},
+        "getters_invoked": {"const": 0},
+        "max_depth": {"type": "integer", "minimum": 0, "maximum": 12},
+        "max_entries_per_table": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "max_observations": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "modules_loaded": {"const": 0},
+        "skipped_non_string_keys": {"type": "integer", "minimum": 0},
+        "truncated": {"type": "boolean"},
+        "truncated_tables": {"type": "integer", "minimum": 0},
+        "unknown_functions_invoked": {"const": 0}
+      },
+      "required": [
+        "exhaustive",
+        "getters_invoked",
+        "max_depth",
+        "max_entries_per_table",
+        "max_observations",
+        "modules_loaded",
+        "skipped_non_string_keys",
+        "truncated",
+        "truncated_tables",
+        "unknown_functions_invoked"
+      ],
+      "type": "object"
+    },
+    "module_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "observations": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {"type": ["string", "null"]},
+          "lua_path": {"type": "string", "minLength": 1, "maxLength": 4096},
+          "value_kind": {
+            "enum": [
+              "boolean",
+              "function",
+              "nil",
+              "number",
+              "string",
+              "table",
+              "table_cycle",
+              "thread",
+              "userdata"
+            ]
+          }
+        },
+        "required": ["lua_path", "value_kind"],
+        "type": "object"
+      },
+      "maxItems": 100000,
+      "type": "array"
+    },
+    "probe_version": {"const": "1.0.0"},
+    "scenario": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "phase": {"type": "string", "minLength": 1}
+      },
+      "required": ["description", "name", "phase"],
+      "type": "object"
+    },
+    "schema_version": {"const": 1},
+    "snapshot_id": {"type": "string", "pattern": "^snapshot-[0-9a-f]{64}$"},
+    "vm_identity": {"type": "string", "minLength": 1}
+  },
+  "required": [
+    "bridge",
+    "build_id",
+    "coverage",
+    "module_sha256",
+    "observations",
+    "probe_version",
+    "scenario",
+    "schema_version",
+    "snapshot_id",
+    "vm_identity"
+  ],
+  "title": "Aniimo bounded Lua runtime observation v1",
+  "type": "object"
+}

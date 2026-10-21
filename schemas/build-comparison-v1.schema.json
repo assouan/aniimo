@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aniimo.invalid/schemas/build-comparison-v1.schema.json",
+  "title": "Aniimo multi-build comparison",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "change_flag_counts",
+    "comparison_key",
+    "destination_build_id",
+    "destination_fingerprint_count",
+    "destination_snapshot_id",
+    "fingerprint_algorithm",
+    "invalidation_status_counts",
+    "match_count",
+    "match_status_counts",
+    "producer",
+    "schema_version",
+    "source_build_id",
+    "source_fingerprint_count",
+    "source_snapshot_id",
+    "uncertainties"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "comparison_key": {"type": "string", "pattern": "^m3-[0-9a-f]{64}$"},
+    "source_build_id": {"type": "string", "pattern": "^build-[0-9a-f]{64}$"},
+    "destination_build_id": {"type": "string", "pattern": "^build-[0-9a-f]{64}$"},
+    "source_snapshot_id": {"type": "string", "pattern": "^snapshot-[0-9a-f]{64}$"},
+    "destination_snapshot_id": {"type": "string", "pattern": "^snapshot-[0-9a-f]{64}$"},
+    "source_fingerprint_count": {"type": "integer", "minimum": 0},
+    "destination_fingerprint_count": {"type": "integer", "minimum": 0},
+    "fingerprint_algorithm": {"const": "dependency-fingerprint-v1-strict"},
+    "match_count": {"type": "integer", "minimum": 0},
+    "match_status_counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "change_flag_counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "invalidation_status_counts": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "modkit.compare"},
+        "version": {"type": "string"}
+      }
+    },
+    "uncertainties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bsim_candidates_confirm_identity",
+        "discovery_completeness_claimed",
+        "missing_layouts_are_unchanged",
+        "runtime_compatibility_certified"
+      ],
+      "properties": {
+        "bsim_candidates_confirm_identity": {"const": false},
+        "discovery_completeness_claimed": {"const": false},
+        "missing_layouts_are_unchanged": {"const": false},
+        "runtime_compatibility_certified": {"const": false}
+      }
+    }
+  }
+}

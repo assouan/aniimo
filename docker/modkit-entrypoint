@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+# Ghidra's launch scripts honor MAXMEM; keep the public pipeline variable stable.
+if [ -n "${MODKIT_GHIDRA_MAX_HEAP:-}" ]; then
+    export MAXMEM="${MODKIT_GHIDRA_MAX_HEAP}"
+fi
+
+exec python -m modkit "$@"
+

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aniimo.invalid/schemas/lua-analysis-v1.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "analysis_id": {"type": "string", "minLength": 1},
+    "analysis_key": {"type": "string", "pattern": "^m4-[0-9a-f]{64}$"},
+    "bridge": {
+      "additionalProperties": true,
+      "properties": {
+        "classification": {"const": "reference_only"},
+        "implementation_exported": {"const": false},
+        "module_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      },
+      "required": ["classification", "implementation_exported", "module_sha256"],
+      "type": "object"
+    },
+    "build_id": {"type": "string", "pattern": "^build-[0-9a-f]{64}$"},
+    "counts": {"type": "object"},
+    "lua_analysis_id": {"type": "string", "pattern": "^lua-analysis:m4-[0-9a-f]{64}$"},
+    "producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {"const": "modkit.lua"},
+        "version": {"type": "string", "minLength": 1}
+      },
+      "required": ["name", "version"],
+      "type": "object"
+    },
+    "runtime_probe": {
+      "additionalProperties": false,
+      "properties": {
+        "executed": {"const": false},
+        "reason": {"type": "string", "minLength": 1},
+        "status": {"const": "not_tested"}
+      },
+      "required": ["executed", "reason", "status"],
+      "type": "object"
+    },
+    "schema_version": {"const": 1},
+    "snapshot_id": {"type": "string", "pattern": "^snapshot-[0-9a-f]{64}$"}
+  },
+  "required": [
+    "analysis_id",
+    "analysis_key",
+    "bridge",
+    "build_id",
+    "counts",
+    "lua_analysis_id",
+    "producer",
+    "runtime_probe",
+    "schema_version",
+    "snapshot_id"
+  ],
+  "title": "Aniimo Lua static analysis summary v1",
+  "type": "object"
+}

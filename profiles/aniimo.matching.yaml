@@ -1,0 +1,6 @@
+# Human matching decisions and externally produced candidates stay separate
+# from generated comparison artifacts. Similarity candidates never confirm identity.
+schema_version: 1
+reviews: []
+bsim_candidates: []
+layouts: []

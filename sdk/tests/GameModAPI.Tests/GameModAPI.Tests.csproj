@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>GameModAPI.Tests</AssemblyName>
+    <RootNamespace>GameModAPI.Tests</RootNamespace>
+    <Version>1.1.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/GameModAPI.Adapter.Aniimo/GameModAPI.Adapter.Aniimo.csproj" />
+  </ItemGroup>
+</Project>

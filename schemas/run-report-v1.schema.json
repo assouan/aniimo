@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aniimo.local/schemas/run-report-v1.schema.json",
+  "title": "Hierarchical workflow report v1",
+  "type": "object",
+  "required": ["schema_version", "workflow_run_id", "phase", "status", "duration_ms", "step_duration_sum_ms", "critical_path_ms", "steps"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "workflow_run_id": { "type": "string", "minLength": 1 },
+    "snapshot_id": { "type": ["string", "null"] },
+    "duration_ms": { "type": "number", "minimum": 0 },
+    "step_duration_sum_ms": { "type": "number", "minimum": 0 },
+    "critical_path_ms": { "type": "number", "minimum": 0 },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["step_id", "stage_name", "status", "cache_status", "duration_ms", "input_item_count", "input_bytes", "output_item_count", "output_bytes"],
+        "properties": {
+          "status": { "enum": ["completed", "cache_hit", "skipped", "failed", "blocked_by_dependency"] },
+          "cache_status": { "enum": ["hit", "miss", "not_applicable"] },
+          "duration_ms": { "type": "number", "minimum": 0 }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
+

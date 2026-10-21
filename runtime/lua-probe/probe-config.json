@@ -1,0 +1,23 @@
+{
+  "bridge": "xlua",
+  "limits": {
+    "max_depth": 4,
+    "max_entries_per_table": 256,
+    "max_observations": 10000
+  },
+  "probe_version": "1.0.0",
+  "scenarios": [
+    {
+      "description": "Après initialisation complète du menu, avant chargement d'une partie.",
+      "name": "main_menu",
+      "phase": "settled"
+    },
+    {
+      "description": "Après chargement local complet d'une partie autorisée.",
+      "name": "local_game",
+      "phase": "settled"
+    }
+  ],
+  "schema_version": 1,
+  "status": "not_tested"
+}

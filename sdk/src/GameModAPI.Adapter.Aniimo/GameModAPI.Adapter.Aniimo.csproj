@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>GameModAPI.Adapter.Aniimo</AssemblyName>
+    <RootNamespace>GameModAPI.Adapter.Aniimo</RootNamespace>
+    <Version>1.1.0</Version>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../GameModAPI.Contracts/GameModAPI.Contracts.csproj" />
+    <ProjectReference Include="../GameModAPI.Runtime/GameModAPI.Runtime.csproj" />
+  </ItemGroup>
+</Project>

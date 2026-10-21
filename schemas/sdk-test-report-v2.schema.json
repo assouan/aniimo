@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aniimo.invalid/schemas/sdk-test-report-v2.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "adapter_sdk_version": {"const": "1.1.0"},
+    "binary_compatibility_status": {"const": "passed"},
+    "build_ids": {"items": {"type": "string", "pattern": "^build-[0-9a-f]{64}$"}, "minItems": 2, "type": "array", "uniqueItems": true},
+    "current_contract_assembly_version": {"const": "1.0.0.0"},
+    "old_contract_assembly_version": {"const": "1.0.0.0"},
+    "plugin_compiled_sdk_version": {"const": "1.0.0"},
+    "plugin_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "results": {"items": {"type": "object"}, "minItems": 2, "type": "array"},
+    "runtime_game_status": {"const": "not_tested"},
+    "same_plugin_binary": {"const": true},
+    "schema_version": {"const": 2},
+    "status": {"const": "passed"}
+  },
+  "required": ["adapter_sdk_version", "binary_compatibility_status", "build_ids", "current_contract_assembly_version", "old_contract_assembly_version", "plugin_compiled_sdk_version", "plugin_sha256", "results", "runtime_game_status", "same_plugin_binary", "schema_version", "status"],
+  "title": "Aniimo SDK binary compatibility test report v2",
+  "type": "object"
+}

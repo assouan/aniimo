@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aniimo.local/schemas/capture-manifest-v2.schema.json",
+  "title": "Immutable capture manifest v2",
+  "type": "object",
+  "required": ["schema_version", "snapshot_id", "build_id", "selection_id", "selection_sha256", "payloads", "inventory", "absences", "coherence", "totals"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "snapshot_id": { "type": "string", "pattern": "^snapshot-[0-9a-f]{64}$" },
+    "build_id": { "type": "string", "pattern": "^build-[0-9a-f]{64}$" },
+    "selection_id": { "type": "string", "minLength": 1 },
+    "selection_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "plan_id": { "type": "string", "pattern": "^plan-[0-9a-f]{64}$" },
+    "payloads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["logical_path", "sha256", "size_bytes", "object_id", "rule_id", "feature", "identity_contribution"],
+        "properties": {
+          "logical_path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "size_bytes": { "type": "integer", "minimum": 0 },
+          "object_id": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+          "identity_contribution": { "enum": ["build_content", "evidence_only"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "inventory": { "type": "array" },
+    "absences": { "type": "array" },
+    "coherence": { "type": "array" },
+    "totals": { "type": "object" }
+  },
+  "additionalProperties": true
+}
+

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aniimo.invalid/schemas/sdk-release-evidence-v2.schema.json",
+  "additionalProperties": true,
+  "properties": {
+    "api_ids": {"contains": {"const": "aniimo.build-identity"}, "minItems": 2, "type": "array", "uniqueItems": true},
+    "authorization": {"properties": {"status": {"const": "not_requested"}}, "required": ["status"], "type": "object"},
+    "binary_compatibility_status": {"const": "passed"},
+    "distribution_verification_status": {"const": "passed"},
+    "native_optimization_status": {"const": "not_needed"},
+    "package_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "runtime_validation_status": {"const": "not_tested"},
+    "schema_version": {"const": 2},
+    "signature_status": {"enum": ["unsigned", "signed"]}
+  },
+  "required": ["api_ids", "authorization", "binary_compatibility_status", "distribution_verification_status", "native_optimization_status", "package_sha256", "runtime_validation_status", "schema_version", "signature_status"],
+  "title": "Aniimo SDK release evidence v2",
+  "type": "object"
+}

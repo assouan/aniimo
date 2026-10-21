@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.aniimo.invalid/schemas/il2cpp-adapter-result-v1.schema.json",
+  "title": "Aniimo IL2CPP adapter result",
+  "type": "object",
+  "required": ["adapter", "binary", "catalog_published", "diagnostic", "fallback_used", "metadata", "schema_version", "snapshot_id", "status"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "status": {"enum": ["parsed", "unsupported_metadata_version", "inconsistent_metadata", "parse_error", "suspected_protection"]},
+    "catalog_published": {"type": "boolean"},
+    "fallback_used": {"const": false},
+    "adapter": {"type": "object"},
+    "binary": {"type": ["object", "null"]},
+    "metadata": {"type": ["object", "null"]},
+    "evidence": {"type": "object"},
+    "diagnostic": {"type": "string"},
+    "snapshot_id": {"type": ["string", "null"]}
+  }
+}
